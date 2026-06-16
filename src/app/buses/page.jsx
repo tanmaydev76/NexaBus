@@ -142,7 +142,20 @@ function BusListingContent() {
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  const filtered = useMemo(() => applyFilters(mockBuses, filters), [filters]);
+  function hasDeparted(bus) {
+    if (!date) return false;
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (date !== todayStr) return false;
+    const now = new Date();
+    const [h, m] = bus.departure.split(":").map(Number);
+    return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
+  }
+
+  const filtered = useMemo(
+    () => applyFilters(mockBuses, filters).filter((bus) => !hasDeparted(bus)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filters, date]
+  );
 
   const activeCount =
     filters.quickFilters.length +
