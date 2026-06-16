@@ -1,9 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { User } from "lucide-react";
+import { User, Users } from "lucide-react";
 import useBookingStore from "@/store/bookingStore";
 import { useAuth } from "@/context/AuthContext";
-import TravellerQuickSelect from "@/components/travellers/TravellerQuickSelect";
 
 function PassengerField({ label, error, children }) {
   return (
@@ -13,6 +12,18 @@ function PassengerField({ label, error, children }) {
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
+}
+
+function getAvatarColor(gender) {
+  if (gender === "Female") return "bg-pink-100 text-pink-600";
+  if (gender === "Other") return "bg-purple-100 text-purple-600";
+  return "bg-blue-100 text-blue-600";
+}
+
+function getInitials(name) {
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export default function PassengerForm({ onValidated }) {
@@ -34,9 +45,9 @@ export default function PassengerForm({ onValidated }) {
   );
   const [errors, setErrors] = useState(selectedSeats.map(() => ({})));
   const [savedTravellers, setSavedTravellers] = useState([]);
-  const [selectedChip, setSelectedChip] = useState(selectedSeats.map(() => null));
+  // For multi-passenger: which chip was tapped, waiting for slot selection
+  const [pendingTraveller, setPendingTraveller] = useState(null);
 
-  // Fetch saved travellers if logged in
   useEffect(() => {
     if (!user) return;
     fetch("/api/travellers")
@@ -44,23 +55,16 @@ export default function PassengerForm({ onValidated }) {
       .then((data) => {
         const list = data.travellers || [];
         setSavedTravellers(list);
-        // Auto-fill Passenger 1 with primary traveller
-        if (list.length > 0) {
-          const primary = list.find((t) => t.isPrimary) || null;
-          if (primary && passengers.length > 0 && !passengers[0].name) {
-            fillFromTraveller(0, primary);
-            setSelectedChip((prev) => {
-              const next = [...prev];
-              next[0] = String(primary._id);
-              return next;
-            });
-          }
+        // Auto-fill first passenger with primary traveller
+        if (list.length > 0 && passengers.length > 0 && !passengers[0].name) {
+          const primary = list.find((t) => t.isPrimary);
+          if (primary) fillSlot(0, primary);
         }
       })
       .catch(() => {});
   }, [user]);
 
-  function fillFromTraveller(idx, traveller) {
+  function fillSlot(idx, traveller) {
     setPassengers((prev) => {
       const next = [...prev];
       next[idx] = {
@@ -80,34 +84,31 @@ export default function PassengerForm({ onValidated }) {
       next[idx] = {};
       return next;
     });
+    setPendingTraveller(null);
   }
 
-  function handleSelectTraveller(idx, traveller) {
-    fillFromTraveller(idx, traveller);
-    setSelectedChip((prev) => {
-      const next = [...prev];
-      next[idx] = String(traveller._id);
-      return next;
-    });
+  function handleChipClick(traveller) {
+    if (passengers.length === 1) {
+      fillSlot(0, traveller);
+      return;
+    }
+    // Multi-passenger: if same chip tapped again, cancel
+    if (pendingTraveller?._id === traveller._id) {
+      setPendingTraveller(null);
+      return;
+    }
+    setPendingTraveller(traveller);
   }
 
   const update = (idx, field, value) => {
     setPassengers((prev) => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: value };
-      // If user edits manually, clear the saved traveller link
       if (["name", "mobile", "email", "age", "gender"].includes(field)) {
         next[idx].savedTravellerId = null;
       }
       return next;
     });
-    if (["name", "mobile", "email", "age", "gender"].includes(field)) {
-      setSelectedChip((prev) => {
-        const next = [...prev];
-        next[idx] = null;
-        return next;
-      });
-    }
     setErrors((prev) => {
       const next = [...prev];
       next[idx] = { ...next[idx], [field]: "" };
@@ -135,27 +136,42 @@ export default function PassengerForm({ onValidated }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Passenger cards */}
       {passengers.map((p, idx) => (
-        <div key={p.seatId} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="bg-blue-100 text-blue-700 p-1.5 rounded-lg">
-              <User size={16} />
+        <div
+          key={p.seatId}
+          className={`bg-white rounded-xl border p-5 shadow-sm transition-all ${
+            pendingTraveller ? "border-blue-300 ring-2 ring-blue-100" : "border-gray-200"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-100 text-blue-700 p-1.5 rounded-lg">
+                <User size={16} />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800 text-sm">Passenger {idx + 1}</p>
+                <p className="text-xs text-gray-400">Seat: {p.seatNumber}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-gray-800 text-sm">Passenger {idx + 1}</p>
-              <p className="text-xs text-gray-400">Seat: {p.seatNumber}</p>
-            </div>
+            {/* Quick-fill slot button — shown when a chip is pending */}
+            {pendingTraveller && (
+              <button
+                type="button"
+                onClick={() => fillSlot(idx, pendingTraveller)}
+                className="text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Fill here
+              </button>
+            )}
+            {/* Filled-from badge */}
+            {!pendingTraveller && p.savedTravellerId && (
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                Auto-filled
+              </span>
+            )}
           </div>
-
-          {/* Quick select chips (logged-in users only) */}
-          {user && savedTravellers.length > 0 && (
-            <TravellerQuickSelect
-              travellers={savedTravellers}
-              selectedId={selectedChip[idx]}
-              onSelect={(t) => handleSelectTraveller(idx, t)}
-            />
-          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <PassengerField label="Full Name *" error={errors[idx]?.name}>
@@ -214,7 +230,7 @@ export default function PassengerForm({ onValidated }) {
             </PassengerField>
           </div>
 
-          {/* Save traveller checkbox — shown when manually filled and logged in */}
+          {/* Save checkbox — only when manually filled */}
           {user && !p.savedTravellerId && (p.name || p.mobile) && (
             <label className="flex items-center gap-2.5 mt-4 cursor-pointer group">
               <input
@@ -231,12 +247,70 @@ export default function PassengerForm({ onValidated }) {
         </div>
       ))}
 
+      {/* Confirm & Book */}
       <button
         onClick={validate}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm"
       >
         Confirm & Book
       </button>
+
+      {/* Saved travellers strip — below the button */}
+      {user && savedTravellers.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={14} className="text-gray-400" />
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              {passengers.length > 1 && pendingTraveller
+                ? "Now tap 'Fill here' on a passenger above"
+                : "Quick-fill from saved travellers"}
+            </p>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {savedTravellers.map((t) => {
+              const isPending = pendingTraveller?._id === t._id;
+              const isFilled = passengers.some((p) => p.savedTravellerId === String(t._id));
+              return (
+                <button
+                  key={t._id}
+                  type="button"
+                  onClick={() => handleChipClick(t)}
+                  className={`flex-shrink-0 flex items-center gap-2.5 border rounded-full px-3 py-2 transition-all ${
+                    isPending
+                      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                      : isFilled
+                      ? "border-green-400 bg-green-50"
+                      : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50"
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${getAvatarColor(t.gender)}`}>
+                    {getInitials(t.fullName)}
+                  </div>
+                  <div className="text-left">
+                    <p className={`text-xs font-bold leading-tight ${isPending ? "text-blue-700" : isFilled ? "text-green-700" : "text-gray-800"}`}>
+                      {t.fullName.split(" ")[0]}
+                    </p>
+                    <p className="text-[10px] text-gray-400 leading-tight">{t.age}y · {t.gender}</p>
+                  </div>
+                  {t.isPrimary && !isFilled && (
+                    <span className="text-[9px] font-bold text-blue-500 uppercase">Primary</span>
+                  )}
+                  {isFilled && (
+                    <span className="text-[9px] font-bold text-green-600">✓ Filled</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {passengers.length > 1 && !pendingTraveller && (
+            <p className="text-[10px] text-gray-400 mt-2.5">
+              Tap a traveller, then choose which passenger slot to fill above.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
