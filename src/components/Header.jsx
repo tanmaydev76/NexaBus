@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Ticket, UserCircle } from "lucide-react";
+import { ChevronDown, LogOut, Ticket, UserCircle, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 
@@ -127,6 +127,13 @@ export default function Header() {
                           className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <Ticket size={16} className="text-gray-400" /> My Bookings
+                        </Link>
+                        <Link
+                          href="/profile/travellers"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Users size={16} className="text-gray-400" /> My Travellers
                         </Link>
                         <div className="border-t border-gray-100 mx-3 my-1" />
                         <button

@@ -3,10 +3,12 @@ import mongoose from 'mongoose';
 const passengerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   age: { type: Number, required: true },
-  gender: { type: String, required: true },
+  gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
   seatNumber: { type: String, required: true },
   mobile: { type: String, default: '' },
   email: { type: String, default: '' },
+  savedTravellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Traveller', default: null },
+  saveTraveller: { type: Boolean, default: false },
 }, { _id: false });
 
 const bookingSchema = new mongoose.Schema({

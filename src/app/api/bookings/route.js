@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import Booking from '@/lib/models/Booking';
+import Traveller from '@/lib/models/Traveller';
 import { requireAuth } from '@/lib/middleware/auth';
 
 function generateBookingId() {
@@ -36,6 +37,41 @@ export async function POST(req) {
       discount: discount || 0,
       total, couponCode: couponCode || '',
     });
+
+    // Post-booking: update traveller stats and auto-save new travellers
+    if (passengers && passengers.length > 0) {
+      await Promise.allSettled(
+        passengers.map(async (p) => {
+          // Increment bookingCount on used saved travellers
+          if (p.savedTravellerId) {
+            await Traveller.findByIdAndUpdate(p.savedTravellerId, {
+              $inc: { bookingCount: 1 },
+              lastUsedAt: new Date(),
+            });
+          }
+
+          // Auto-save new traveller if checkbox was checked
+          if (p.saveTraveller && !p.savedTravellerId && p.name && p.mobile) {
+            const count = await Traveller.countDocuments({ userId: user._id });
+            if (count < 10) {
+              const exists = await Traveller.findOne({ userId: user._id, mobileNumber: p.mobile });
+              if (!exists) {
+                await Traveller.create({
+                  userId: user._id,
+                  fullName: p.name,
+                  age: Number(p.age) || 25,
+                  gender: p.gender || 'Male',
+                  mobileNumber: p.mobile,
+                  emailAddress: p.email || null,
+                  bookingCount: 1,
+                  lastUsedAt: new Date(),
+                });
+              }
+            }
+          }
+        })
+      );
+    }
 
     return NextResponse.json({ booking }, { status: 201 });
   } catch (err) {

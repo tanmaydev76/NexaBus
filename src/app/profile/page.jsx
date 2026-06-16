@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   User, Mail, Phone, Calendar, ChevronRight,
-  Lock, Eye, EyeOff, Save, LogOut, Ticket, CheckCircle,
+  Lock, Eye, EyeOff, Save, LogOut, Ticket, CheckCircle, Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
@@ -277,6 +277,22 @@ export default function ProfilePage() {
           </button>
         </form>
       </SectionCard>
+
+      {/* My Travellers */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">My Travellers</h2>
+            <p className="text-sm text-gray-400 mt-0.5">Manage saved passenger profiles</p>
+          </div>
+          <button
+            onClick={() => router.push("/profile/travellers")}
+            className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors"
+          >
+            <Users size={15} /> Manage
+          </button>
+        </div>
+      </div>
 
       {/* Sign out */}
       <SectionCard title="Account">
