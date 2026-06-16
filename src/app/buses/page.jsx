@@ -216,7 +216,7 @@ function BusListingContent() {
                   </button>
                 </div>
               ) : (
-                filtered.map((bus) => <BusCard key={bus.id} bus={bus} />)
+                filtered.map((bus) => <BusCard key={bus.id} bus={bus} journeyDate={date} />)
               )}
             </div>
           </div>
