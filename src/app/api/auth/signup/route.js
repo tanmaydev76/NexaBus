@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db/mongodb';
 import User from '@/lib/models/User';
 import { signToken } from '@/lib/utils/jwt';
@@ -22,7 +23,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
     }
 
-    const user = await User.create({ name: name.trim(), email, password });
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const user = await User.create({ name: name.trim(), email, password: hashedPassword });
     const token = signToken({ id: user._id.toString(), email: user.email });
 
     cookies().set('nb_token', token, {

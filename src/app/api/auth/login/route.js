@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db/mongodb';
 import User from '@/lib/models/User';
 import { signToken } from '@/lib/utils/jwt';
@@ -14,7 +15,7 @@ export async function POST(req) {
 
     await connectDB();
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 

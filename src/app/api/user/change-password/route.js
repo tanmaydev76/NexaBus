@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db/mongodb';
 import User from '@/lib/models/User';
 import { requireAuth } from '@/lib/middleware/auth';
@@ -19,12 +20,12 @@ export async function PUT(req) {
 
     await connectDB();
     const dbUser = await User.findById(user._id).select('+password');
-    if (!(await dbUser.comparePassword(currentPassword))) {
+    if (!(await bcrypt.compare(currentPassword, dbUser.password))) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
 
-    dbUser.password = newPassword;
-    await dbUser.save();
+    const hashedNew = await bcrypt.hash(newPassword, 12);
+    await User.findByIdAndUpdate(user._id, { password: hashedNew });
 
     return NextResponse.json({ success: true, message: 'Password updated successfully' });
   } catch (err) {
