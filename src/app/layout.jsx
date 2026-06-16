@@ -11,6 +11,12 @@ export const metadata = {
   description: "Book bus tickets easily across Maharashtra. Fast, simple, and reliable.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -18,7 +24,7 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <Header />
           <main>{children}</main>
-          <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+          <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
         </AuthProvider>
       </body>
     </html>
