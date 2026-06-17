@@ -160,7 +160,7 @@ export default function ConfirmPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Passenger form */}
           <div className="flex-1 order-2 lg:order-1">
-            <PassengerForm onValidated={handleConfirmed} />
+            <PassengerForm onValidated={handleConfirmed} isBooking={isBooking} />
           </div>
 
           {/* Order summary — shows first on mobile */}

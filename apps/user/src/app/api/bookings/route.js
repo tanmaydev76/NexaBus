@@ -26,8 +26,32 @@ export async function POST(req) {
     }
 
     await connectDB();
-    const bookingId = generateBookingId();
 
+    // Resolve trip first — busId from the client IS the trip._id (search API returns trip._id as bus.id)
+    let trip = null;
+    try { trip = await Trip.findById(busId).lean(); } catch {}
+    if (!trip) {
+      try { trip = await Trip.findOne({ busId, departureDate: date }).lean(); } catch {}
+    }
+
+    const seatIds = (seats || []).map((s) => s.id).filter(Boolean);
+
+    // Validate seat availability BEFORE creating the booking
+    if (trip && seatIds.length > 0) {
+      const takenCount = await TripSeat.countDocuments({
+        tripId: trip._id,
+        seatId: { $in: seatIds },
+        status: { $in: ['booked', 'reserved', 'blocked'] },
+      });
+      if (takenCount > 0) {
+        return NextResponse.json(
+          { error: 'One or more selected seats are already booked. Please go back and choose different seats.' },
+          { status: 409 }
+        );
+      }
+    }
+
+    const bookingId = generateBookingId();
     const booking = await Booking.create({
       userId: user._id,
       bookingId,
@@ -38,25 +62,14 @@ export async function POST(req) {
       total, couponCode: couponCode || '',
     });
 
-    // Link booking to operator (best-effort — never fails the booking)
-    try {
-      // busId from the client IS the trip._id (search API returns trip._id as bus.id)
-      let trip = null;
-      try { trip = await Trip.findById(busId).lean(); } catch {}
-      if (!trip) {
-        try { trip = await Trip.findOne({ busId, departureDate: date }).lean(); } catch {}
-      }
-      if (trip) {
-        const seatIds = (seats || []).map((s) => s.id).filter(Boolean);
-        if (seatIds.length > 0) {
-          await TripSeat.updateMany(
-            { tripId: trip._id, seatId: { $in: seatIds } },
-            { $set: { status: 'booked', bookingId: booking._id } }
-          );
-        }
-        await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
-      }
-    } catch (_) {}
+    // Mark seats as booked and link to operator
+    if (trip && seatIds.length > 0) {
+      await TripSeat.updateMany(
+        { tripId: trip._id, seatId: { $in: seatIds } },
+        { $set: { status: 'booked', bookingId: booking._id } }
+      );
+      await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
+    }
 
     // Post-booking: update traveller stats and auto-save new travellers
     if (passengers && passengers.length > 0) {

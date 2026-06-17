@@ -26,7 +26,7 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export default function PassengerForm({ onValidated }) {
+export default function PassengerForm({ onValidated, isBooking = false }) {
   const { selectedSeats, setPassengerDetails } = useBookingStore();
   const { user } = useAuth();
 
@@ -250,9 +250,11 @@ export default function PassengerForm({ onValidated }) {
       {/* Confirm & Book */}
       <button
         onClick={validate}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition text-sm"
+        disabled={isBooking}
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2"
       >
-        Confirm & Book
+        {isBooking && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+        {isBooking ? "Processing…" : "Confirm & Book"}
       </button>
 
       {/* Saved travellers strip — below the button */}
