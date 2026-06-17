@@ -34,6 +34,8 @@ const bookingSchema = new mongoose.Schema({
   couponCode: { type: String, default: '' },
   status: { type: String, enum: ['confirmed', 'cancelled'], default: 'confirmed' },
   cancelledAt: { type: Date, default: null },
+  operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Operator', default: null },
+  tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
 }, { timestamps: true });
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
