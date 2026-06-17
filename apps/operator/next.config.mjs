@@ -1,12 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@nexabus/db'],
+  experimental: {
+    // Tells Next.js/Vercel's bundler (nft) to include these in the serverless output
+    serverComponentsExternalPackages: ['mongoose', 'mongodb'],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // mongoose@9 depends on mongodb@7 which has a broken "default" condition in its exports
-      // field — webpack refuses to bundle it. Marking them as externals forces Node.js to
-      // require() them at runtime (where the exports issue doesn't apply).
-      config.externals = [...(Array.isArray(config.externals) ? config.externals : [config.externals].filter(Boolean)), 'mongoose', 'mongodb'];
+      // Also add as raw externals to prevent webpack hitting mongodb@7's broken
+      // exports field ("default" condition not last) during local dev/build
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : [config.externals].filter(Boolean)),
+        'mongoose',
+        'mongodb',
+      ];
     }
     return config;
   },
