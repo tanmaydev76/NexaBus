@@ -105,14 +105,6 @@ export default function EditBusPage() {
     finally { setSaving(false); }
   };
 
-  const Input = ({ field, ...props }) => (
-    <input
-      value={form[field]} onChange={(e) => set(field, e.target.value)}
-      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors[field] ? "border-red-400" : "border-slate-200"}`}
-      {...props}
-    />
-  );
-
   if (loadingBus) return (
     <div className="p-8 flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
@@ -150,21 +142,21 @@ export default function EditBusPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Bus Name <span className="text-red-500">*</span></label>
-              <Input field="busName" placeholder="e.g. Shivneri Express" />
+              <input value={form.busName} onChange={(e) => set("busName", e.target.value)} placeholder="e.g. Shivneri Express" className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors.busName ? "border-red-400" : "border-slate-200"}`} />
               {errors.busName && <p className="text-xs text-red-500 mt-1">{errors.busName}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Bus Number <span className="text-red-500">*</span></label>
-              <Input field="busNumber" placeholder="e.g. MH12 AB 1234" />
+              <input value={form.busNumber} onChange={(e) => set("busNumber", e.target.value)} placeholder="e.g. MH12 AB 1234" className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors.busNumber ? "border-red-400" : "border-slate-200"}`} />
               {errors.busNumber && <p className="text-xs text-red-500 mt-1">{errors.busNumber}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Service Number</label>
-              <Input field="serviceNumber" placeholder="e.g. SVC-001" />
+              <input value={form.serviceNumber} onChange={(e) => set("serviceNumber", e.target.value)} placeholder="e.g. SVC-001" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Total Seats</label>
-              <Input field="totalSeats" type="number" min="1" placeholder="e.g. 48" />
+              <input value={form.totalSeats} onChange={(e) => set("totalSeats", e.target.value)} type="number" min="1" placeholder="e.g. 48" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand" />
             </div>
           </div>
 

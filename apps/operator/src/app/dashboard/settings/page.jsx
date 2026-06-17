@@ -9,6 +9,17 @@ const TABS = [
   { id: "security", label: "Security",         icon: Lock },
 ];
 
+function PasswordField({ label, value, onChange, error }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <input type="password" value={value} onChange={onChange}
+        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${error ? "border-red-400" : "border-slate-200"}`} />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 function InputRow({ label, value, onChange, type = "text", placeholder, disabled }) {
   return (
     <div>
@@ -150,23 +161,14 @@ function SecurityTab() {
     finally { setSaving(false); }
   };
 
-  const Field = ({ label, field }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-      <input type="password" value={form[field]} onChange={set(field)}
-        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors[field] ? "border-red-400" : "border-slate-200"}`} />
-      {errors[field] && <p className="text-xs text-red-500 mt-1">{errors[field]}</p>}
-    </div>
-  );
-
   return (
     <div className="max-w-md space-y-5">
       <div>
         <h3 className="text-sm font-semibold text-slate-700 mb-3">Change Password</h3>
         <div className="space-y-4">
-          <Field label="Current Password" field="currentPassword" />
-          <Field label="New Password" field="newPassword" />
-          <Field label="Confirm New Password" field="confirmPassword" />
+          <PasswordField label="Current Password" value={form.currentPassword} onChange={set("currentPassword")} error={errors.currentPassword} />
+          <PasswordField label="New Password" value={form.newPassword} onChange={set("newPassword")} error={errors.newPassword} />
+          <PasswordField label="Confirm New Password" value={form.confirmPassword} onChange={set("confirmPassword")} error={errors.confirmPassword} />
         </div>
       </div>
       <button onClick={handleChange} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-700 disabled:opacity-60">

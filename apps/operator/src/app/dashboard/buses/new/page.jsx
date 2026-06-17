@@ -23,6 +23,26 @@ const emptyPoint = () => ({ name: "", address: "", time: "" });
 
 const STEPS = ["Basic Info", "Amenities & Photos", "Boarding & Dropping"];
 
+function Field({ label, error, children, required }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+      {children}
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function FormInput({ value, onChange, error, ...props }) {
+  return (
+    <input
+      value={value} onChange={onChange}
+      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${error ? "border-red-400" : "border-slate-200"}`}
+      {...props}
+    />
+  );
+}
+
 export default function AddBusPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -86,22 +106,6 @@ export default function AddBusPage() {
     finally { setSaving(false); }
   };
 
-  const Field = ({ label, error, children, required }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {children}
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
-  );
-
-  const Input = ({ field, ...props }) => (
-    <input
-      value={form[field]} onChange={(e) => set(field, e.target.value)}
-      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors[field] ? "border-red-400" : "border-slate-200"}`}
-      {...props}
-    />
-  );
-
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       {/* Breadcrumb */}
@@ -135,16 +139,16 @@ export default function AddBusPage() {
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Bus Name" required error={errors.busName}>
-              <Input field="busName" placeholder="e.g. Shivneri Express" />
+              <FormInput value={form.busName} onChange={(e) => set("busName", e.target.value)} error={errors.busName} placeholder="e.g. Shivneri Express" />
             </Field>
             <Field label="Bus Number" required error={errors.busNumber}>
-              <Input field="busNumber" placeholder="e.g. MH12 AB 1234" />
+              <FormInput value={form.busNumber} onChange={(e) => set("busNumber", e.target.value)} error={errors.busNumber} placeholder="e.g. MH12 AB 1234" />
             </Field>
             <Field label="Service Number">
-              <Input field="serviceNumber" placeholder="e.g. SVC-001" />
+              <FormInput value={form.serviceNumber} onChange={(e) => set("serviceNumber", e.target.value)} placeholder="e.g. SVC-001" />
             </Field>
             <Field label="Total Seats">
-              <Input field="totalSeats" type="number" min="1" placeholder="e.g. 48" />
+              <FormInput value={form.totalSeats} onChange={(e) => set("totalSeats", e.target.value)} type="number" min="1" placeholder="e.g. 48" />
             </Field>
           </div>
 

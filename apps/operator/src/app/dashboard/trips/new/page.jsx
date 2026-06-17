@@ -7,6 +7,31 @@ import toast from "react-hot-toast";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function FormSelect({ label, required, value, onChange, error, children }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+      <select value={value} onChange={onChange}
+        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand bg-white ${error ? "border-red-400" : "border-slate-200"}`}>
+        {children}
+      </select>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function FormInput({ label, required, value, onChange, error, ...props }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+      <input value={value} onChange={onChange}
+        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${error ? "border-red-400" : "border-slate-200"}`}
+        {...props} />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 export default function ScheduleTripPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -76,27 +101,6 @@ export default function ScheduleTripPage() {
     finally { setSaving(false); }
   };
 
-  const Select = ({ field, label, required, children }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      <select value={form[field]} onChange={(e) => set(field, e.target.value)}
-        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand bg-white ${errors[field] ? "border-red-400" : "border-slate-200"}`}>
-        {children}
-      </select>
-      {errors[field] && <p className="text-xs text-red-500 mt-1">{errors[field]}</p>}
-    </div>
-  );
-
-  const Input = ({ field, label, required, ...props }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      <input value={form[field]} onChange={(e) => set(field, e.target.value)}
-        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${errors[field] ? "border-red-400" : "border-slate-200"}`}
-        {...props} />
-      {errors[field] && <p className="text-xs text-red-500 mt-1">{errors[field]}</p>}
-    </div>
-  );
-
   const selectedRoute = routes.find((r) => r._id === form.routeId);
 
   return (
@@ -116,18 +120,18 @@ export default function ScheduleTripPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <h3 className="font-semibold text-slate-800 mb-4">Bus & Route</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select field="busId" label="Bus" required>
+            <FormSelect label="Bus" required value={form.busId} onChange={(e) => set("busId", e.target.value)} error={errors.busId}>
               <option value="">Select a bus</option>
               {buses.map((b) => (
                 <option key={b._id} value={b._id}>{b.busName} – {b.busNumber}</option>
               ))}
-            </Select>
-            <Select field="routeId" label="Route" required>
+            </FormSelect>
+            <FormSelect label="Route" required value={form.routeId} onChange={(e) => set("routeId", e.target.value)} error={errors.routeId}>
               <option value="">Select a route</option>
               {routes.map((r) => (
                 <option key={r._id} value={r._id}>{r.routeName} ({r.origin} → {r.destination})</option>
               ))}
-            </Select>
+            </FormSelect>
           </div>
 
           {selectedRoute && (
@@ -150,9 +154,9 @@ export default function ScheduleTripPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <h3 className="font-semibold text-slate-800 mb-4">Schedule</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input field="departureDate" label="Departure Date" required type="date" />
-            <Input field="departureTime" label="Departure Time" required type="time" />
-            <Input field="arrivalTime" label="Arrival Time (est.)" type="time" />
+            <FormInput label="Departure Date" required value={form.departureDate} onChange={(e) => set("departureDate", e.target.value)} error={errors.departureDate} type="date" />
+            <FormInput label="Departure Time" required value={form.departureTime} onChange={(e) => set("departureTime", e.target.value)} error={errors.departureTime} type="time" />
+            <FormInput label="Arrival Time (est.)" value={form.arrivalTime} onChange={(e) => set("arrivalTime", e.target.value)} type="time" />
           </div>
         </div>
 
