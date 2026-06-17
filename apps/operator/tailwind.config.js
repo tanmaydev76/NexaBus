@@ -9,12 +9,12 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#D0121C",
-          50: "#fff1f1",
-          100: "#ffe0e0",
-          200: "#ffc7c7",
-          600: "#D0121C",
-          700: "#b30f17",
+          DEFAULT: "#2563EB",
+          50:  "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          600: "#2563EB",
+          700: "#1d4ed8",
         },
       },
     },

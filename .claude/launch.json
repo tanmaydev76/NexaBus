@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3002
+    },
+    {
+      "name": "operator",
+      "runtimeExecutable": "/Users/tanmaykamble/.local/bin/pnpm",
+      "runtimeArgs": ["--filter", "operator", "dev"],
+      "port": 3001
     }
   ]
 }

@@ -45,9 +45,9 @@ function Sidebar({ collapsed, onClose }) {
   const initials = (operator?.companyName || operator?.name || "OP").slice(0, 2).toUpperCase();
 
   return (
-    <div className={`flex flex-col h-full bg-slate-800 transition-all ${collapsed ? "w-16" : "w-60"}`}>
+    <div className={`flex flex-col h-full bg-[#0F172A] transition-all ${collapsed ? "w-16" : "w-60"}`}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-slate-700 flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-slate-700/60/60 flex-shrink-0">
         <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center flex-shrink-0">
           <Bus size={16} className="text-white" />
         </div>
@@ -66,7 +66,7 @@ function Sidebar({ collapsed, onClose }) {
 
       {/* Operator info */}
       {!collapsed && operator && (
-        <div className="px-4 py-3 border-b border-slate-700 flex-shrink-0">
+        <div className="px-4 py-3 border-b border-slate-700/60 flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
               {initials}
@@ -87,7 +87,7 @@ function Sidebar({ collapsed, onClose }) {
       </nav>
 
       {/* Logout */}
-      <div className="px-2 py-3 border-t border-slate-700 flex-shrink-0">
+      <div className="px-2 py-3 border-t border-slate-700/60 flex-shrink-0">
         <button
           onClick={logout}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors ${collapsed ? "justify-center" : ""}`}
