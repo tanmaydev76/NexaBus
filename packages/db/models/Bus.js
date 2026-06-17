@@ -4,7 +4,9 @@ const busSchema = new mongoose.Schema({
   operatorId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Operator', required: true },
   busName:        { type: String, required: true, trim: true },
   busNumber:      { type: String, required: true, trim: true },
-  busType:        { type: String, enum: ['Sleeper', 'Seater', 'AC Sleeper', 'AC Seater'], required: true },
+  serviceNumber:  { type: String, trim: true, default: '' },
+  busType:        { type: String, enum: ['Sleeper', 'Seater', 'AC Sleeper', 'AC Seater', 'Non-AC Sleeper', 'Non-AC Seater', 'AC Seater/Sleeper'], required: true },
+  totalSeats:     { type: Number, default: 0 },
   amenities:      [{ type: String }],
   photos:         [{ type: String }],
   boardingPoints: [{
