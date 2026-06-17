@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { OperatorAuthProvider } from "@/context/OperatorAuthContext";
 
 export const metadata: Metadata = {
   title: "NexaBus Operator",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <OperatorAuthProvider>{children}</OperatorAuthProvider>
+      </body>
     </html>
   );
 }

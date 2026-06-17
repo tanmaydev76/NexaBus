@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 
-import { connectDB, Booking, Traveller } from '@nexabus/db';
+import { connectDB, Booking, Traveller, Trip, TripSeat } from '@nexabus/db';
 import { requireAuth } from '@/lib/middleware/auth';
 
 function generateBookingId() {
@@ -37,6 +37,19 @@ export async function POST(req) {
       discount: discount || 0,
       total, couponCode: couponCode || '',
     });
+
+    // Link booking to operator: find matching trip, mark seats, set operatorId
+    const trip = await Trip.findOne({ busId, date }).lean();
+    if (trip) {
+      const seatNumbers = (seats || []).map((s) => s.number).filter(Boolean);
+      if (seatNumbers.length > 0) {
+        await TripSeat.updateMany(
+          { tripId: trip._id, seatId: { $in: seatNumbers } },
+          { $set: { status: 'booked', bookingId: booking._id } }
+        );
+      }
+      await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
+    }
 
     // Post-booking: update traveller stats and auto-save new travellers
     if (passengers && passengers.length > 0) {
