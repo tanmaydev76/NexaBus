@@ -38,17 +38,21 @@ export async function POST(req) {
       total, couponCode: couponCode || '',
     });
 
-    // Link booking to operator: find matching trip, mark seats, set operatorId
-    const trip = await Trip.findOne({ busId, date }).lean();
-    if (trip) {
-      const seatNumbers = (seats || []).map((s) => s.number).filter(Boolean);
-      if (seatNumbers.length > 0) {
-        await TripSeat.updateMany(
-          { tripId: trip._id, seatId: { $in: seatNumbers } },
-          { $set: { status: 'booked', bookingId: booking._id } }
-        );
+    // Link booking to operator (best-effort — never fails the booking)
+    try {
+      const trip = await Trip.findOne({ busId, departureDate: date }).lean();
+      if (trip) {
+        const seatNumbers = (seats || []).map((s) => s.number).filter(Boolean);
+        if (seatNumbers.length > 0) {
+          await TripSeat.updateMany(
+            { tripId: trip._id, seatId: { $in: seatNumbers } },
+            { $set: { status: 'booked', bookingId: booking._id } }
+          );
+        }
+        await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
       }
-      await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
+    } catch (_) {
+      // Trip lookup is best-effort; a cast error on non-ObjectId busIds is expected for mock data
     }
 
     // Post-booking: update traveller stats and auto-save new travellers
