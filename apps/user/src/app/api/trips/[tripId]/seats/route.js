@@ -1,0 +1,98 @@
+import { NextResponse } from 'next/server';
+import { connectDB, Trip, Bus, TripSeat } from '@nexabus/db';
+
+function buildSeaterRows(seats) {
+  // 2+2 layout: W A null(gap) A W = 5 columns
+  const rows = [];
+  let i = 0;
+  while (i < seats.length) {
+    const row = [];
+    for (let col = 0; col < 5; col++) {
+      if (col === 2) { row.push(null); continue; }
+      if (i < seats.length) row.push(seats[i++]);
+      else row.push(null);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function buildSleeperRows(seats) {
+  // 1+2 layout: W null A W = 4 columns
+  const rows = [];
+  let i = 0;
+  while (i < seats.length) {
+    const row = [];
+    const positions = ['window', null, 'aisle', 'window'];
+    for (const pos of positions) {
+      if (pos === null) { row.push(null); continue; }
+      if (i < seats.length) row.push(seats[i++]);
+      else row.push(null);
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+export async function GET(req, { params }) {
+  const { tripId } = await params;
+  await connectDB();
+
+  const trip = await Trip.findById(tripId).lean();
+  if (!trip) return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+
+  const bus = await Bus.findById(trip.busId).lean();
+  if (!bus) return NextResponse.json({ error: 'Bus not found' }, { status: 404 });
+
+  const busType   = bus.busType || 'Seater';
+  const isSleeper = busType.toLowerCase().includes('sleeper');
+  const totalSeats = bus.totalSeats || 40;
+
+  let tripSeats = await TripSeat.find({ tripId: trip._id }).lean();
+
+  if (!tripSeats.length) {
+    const toInsert = Array.from({ length: totalSeats }, (_, idx) => ({
+      tripId:     trip._id,
+      seatId:     `S${idx + 1}`,
+      seatNumber: `S${idx + 1}`,
+      status:     'available',
+    }));
+    try {
+      await TripSeat.insertMany(toInsert, { ordered: false });
+    } catch {}
+    tripSeats = await TripSeat.find({ tripId: trip._id }).lean();
+  }
+
+  const seatObjects = tripSeats
+    .sort((a, b) => {
+      const na = parseInt(a.seatId.replace(/\D/g, ''), 10) || 0;
+      const nb = parseInt(b.seatId.replace(/\D/g, ''), 10) || 0;
+      return na - nb;
+    })
+    .map((ts) => ({
+      id:           ts.seatId,
+      number:       ts.seatNumber,
+      type:         'aisle',
+      status:       ts.status,
+      isFemaleOnly: ts.status === 'ladies',
+    }));
+
+  let layout;
+  if (isSleeper) {
+    const half       = Math.ceil(seatObjects.length / 2);
+    const lowerSeats = seatObjects.slice(0, half);
+    const upperSeats = seatObjects.slice(half);
+    layout = {
+      type:  'sleeper',
+      lower: buildSleeperRows(lowerSeats),
+      upper: buildSleeperRows(upperSeats),
+    };
+  } else {
+    layout = {
+      type:  'seater',
+      lower: buildSeaterRows(seatObjects),
+    };
+  }
+
+  return NextResponse.json({ layout, fare: trip.fare });
+}

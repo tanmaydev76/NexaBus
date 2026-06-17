@@ -1,7 +1,122 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { Search, ChevronLeft, ChevronRight, X, User, Phone, Calendar, IndianRupee } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, ChevronLeft, ChevronRight, X, Phone, Calendar, IndianRupee, TrendingUp, TicketCheck, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
+
+const GENDER_COLORS = ["#2563EB", "#ec4899", "#6366f1"];
+
+function StatCard({ icon: Icon, label, value, sub, color = "blue" }) {
+  const colors = {
+    blue:   "bg-blue-50 text-blue-600",
+    green:  "bg-green-50 text-green-600",
+    purple: "bg-purple-50 text-purple-600",
+    red:    "bg-red-50 text-red-600",
+  };
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-4 shadow-sm">
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[color]}`}>
+        <Icon size={20} />
+      </div>
+      <div>
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="text-xl font-bold text-slate-800">{value}</p>
+        {sub && <p className="text-xs text-slate-400">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function BookingsAnalytics({ stats }) {
+  if (!stats) return null;
+  const { totalBookings, todayBookings, totalRevenue, cancelledCount, last7Days, genderBreakdown, routeWise } = stats;
+
+  return (
+    <div className="space-y-5 mb-8">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard icon={TicketCheck}  label="Total Bookings"   value={totalBookings}                  color="blue"   />
+        <StatCard icon={TrendingUp}   label="Today's Bookings" value={todayBookings}                  color="green"  />
+        <StatCard icon={IndianRupee}  label="Total Revenue"    value={`₹${(totalRevenue || 0).toLocaleString("en-IN")}`} color="purple" />
+        <StatCard icon={XCircle}      label="Cancelled"        value={cancelledCount}                 color="red"    />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Last 7 days line chart */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Bookings — Last 7 Days</h3>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={last7Days} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }}
+                tickFormatter={(d) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} />
+              <Tooltip
+                labelFormatter={(d) => d}
+                formatter={(v, name) => [name === "revenue" ? `₹${v}` : v, name === "revenue" ? "Revenue" : "Bookings"]}
+                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              />
+              <Line type="monotone" dataKey="count"   stroke="#2563EB" strokeWidth={2} dot={{ r: 3 }} name="count" />
+              <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="revenue" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Gender breakdown pie */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">Passenger Gender</h3>
+          {genderBreakdown?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={genderBreakdown} dataKey="count" nameKey="gender"
+                  cx="50%" cy="50%" outerRadius={60} label={({ gender, percent }) =>
+                    `${gender} ${(percent * 100).toFixed(0)}%`
+                  } labelLine={false}>
+                  {genderBreakdown.map((_, i) => (
+                    <Cell key={i} fill={GENDER_COLORS[i % GENDER_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center text-slate-400 text-sm">No passenger data</div>
+          )}
+        </div>
+      </div>
+
+      {/* Route-wise table */}
+      {routeWise?.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-700">Top Routes</h3>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Route</th>
+                <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bookings</th>
+                <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Revenue</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {routeWise.map((r, i) => (
+                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-2.5 font-medium text-slate-700">{r.from} → {r.to}</td>
+                  <td className="px-5 py-2.5 text-right text-slate-600">{r.count}</td>
+                  <td className="px-5 py-2.5 text-right font-semibold text-slate-800">₹{(r.revenue || 0).toLocaleString("en-IN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_STYLES = {
   confirmed: "bg-green-100 text-green-700",
@@ -113,6 +228,14 @@ export default function BookingsPage() {
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/operator/bookings/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {});
+  }, []);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -147,6 +270,8 @@ export default function BookingsPage() {
           <p className="text-sm text-slate-500 mt-0.5">{total} total bookings</p>
         </div>
       </div>
+
+      <BookingsAnalytics stats={stats} />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">

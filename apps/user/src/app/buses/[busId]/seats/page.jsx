@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { mockBuses, generateSeatLayout } from "@/lib/mockData";
 import SeatMap from "@/components/SeatMap";
 import BookingSummary from "@/components/BookingSummary";
 import ProgressStepper from "@/components/ProgressStepper";
@@ -12,24 +11,39 @@ import toast from "react-hot-toast";
 export default function SeatSelectionPage() {
   const { busId } = useParams();
   const router = useRouter();
-  const { selectedBus, setSelectedBus, selectedSeats, boardingPoint, droppingPoint } = useBookingStore();
+  const { selectedBus, selectedSeats, boardingPoint, droppingPoint } = useBookingStore();
   const [layout, setLayout] = useState(null);
+  const [layoutLoading, setLayoutLoading] = useState(true);
 
   useEffect(() => {
-    let bus = selectedBus;
-    if (!bus || bus.id !== busId) {
-      bus = mockBuses.find((b) => b.id === busId);
-      if (bus) setSelectedBus(bus);
-      else { router.push("/"); return; }
+    if (!selectedBus || selectedBus.id !== busId) {
+      router.push("/");
+      return;
     }
-    setLayout(generateSeatLayout(busId));
+    setLayoutLoading(true);
+    fetch(`/api/trips/${busId}/seats`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.layout) setLayout(d.layout);
+        else toast.error("Could not load seat map.");
+      })
+      .catch(() => toast.error("Could not load seat map."))
+      .finally(() => setLayoutLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busId]);
 
-  if (!layout || !selectedBus) {
+  if (!selectedBus || layoutLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!layout) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Seat map unavailable.
       </div>
     );
   }
@@ -70,7 +84,6 @@ export default function SeatSelectionPage() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Seat Map */}
           <div className="flex-1">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">
               Select your seat{selectedSeats.length > 0 ? ` (${selectedSeats.length} selected)` : ""}
@@ -78,19 +91,16 @@ export default function SeatSelectionPage() {
             <SeatMap layout={layout} busPrice={selectedBus?.price} />
           </div>
 
-          {/* Desktop booking summary */}
           <div className="hidden lg:block w-80 flex-shrink-0">
             <BookingSummary />
           </div>
 
-          {/* Mobile booking summary (no sticky, just inline below seats) */}
           <div className="lg:hidden">
             <BookingSummary />
           </div>
         </div>
       </div>
 
-      {/* Mobile sticky bottom bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>

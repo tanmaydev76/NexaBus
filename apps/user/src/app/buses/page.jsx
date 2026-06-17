@@ -2,7 +2,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, SlidersHorizontal, X } from "lucide-react";
-import { mockBuses } from "@/lib/mockData";
 import BusCard from "@/components/BusCard";
 import ProgressStepper from "@/components/ProgressStepper";
 import FilterSidebar from "@/components/filters/FilterSidebar";
@@ -126,13 +125,20 @@ function BusListingContent() {
   const date = params.get("date") || "";
   const { setSearchParams, filters, clearAllFilters } = useBookingStore();
 
-  const [loading, setLoading]         = useState(true);
-  const [drawerOpen, setDrawerOpen]   = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [buses, setBuses]           = useState([]);
+  const [fetchError, setFetchError] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (from && to && date) setSearchParams({ from, to, date });
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
+    if (!from || !to || !date) { setLoading(false); return; }
+    setLoading(true);
+    setFetchError(null);
+    fetch(`/api/buses/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}`)
+      .then((r) => r.json())
+      .then((d) => { setBuses(d.buses || []); setLoading(false); })
+      .catch(() => { setFetchError("Failed to load buses. Please try again."); setLoading(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, date]);
 
@@ -156,9 +162,9 @@ function BusListingContent() {
   }
 
   const filtered = useMemo(
-    () => applyFilters(mockBuses, filters).filter((bus) => !hasDeparted(bus)),
+    () => applyFilters(buses, filters).filter((bus) => !hasDeparted(bus)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filters, date]
+    [buses, filters, date]
   );
 
   const activeCount =
@@ -220,6 +226,11 @@ function BusListingContent() {
             <div className="space-y-4">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => <BusSkeleton key={i} />)
+              ) : fetchError ? (
+                <div className="bg-white rounded-xl border border-red-200 p-12 text-center">
+                  <p className="text-4xl mb-3">⚠️</p>
+                  <p className="font-semibold text-gray-700">{fetchError}</p>
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                   <p className="text-4xl mb-3">🚌</p>

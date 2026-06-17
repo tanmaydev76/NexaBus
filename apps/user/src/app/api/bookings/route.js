@@ -40,20 +40,23 @@ export async function POST(req) {
 
     // Link booking to operator (best-effort — never fails the booking)
     try {
-      const trip = await Trip.findOne({ busId, departureDate: date }).lean();
+      // busId from the client IS the trip._id (search API returns trip._id as bus.id)
+      let trip = null;
+      try { trip = await Trip.findById(busId).lean(); } catch {}
+      if (!trip) {
+        try { trip = await Trip.findOne({ busId, departureDate: date }).lean(); } catch {}
+      }
       if (trip) {
-        const seatNumbers = (seats || []).map((s) => s.number).filter(Boolean);
-        if (seatNumbers.length > 0) {
+        const seatIds = (seats || []).map((s) => s.id).filter(Boolean);
+        if (seatIds.length > 0) {
           await TripSeat.updateMany(
-            { tripId: trip._id, seatId: { $in: seatNumbers } },
+            { tripId: trip._id, seatId: { $in: seatIds } },
             { $set: { status: 'booked', bookingId: booking._id } }
           );
         }
         await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
       }
-    } catch (_) {
-      // Trip lookup is best-effort; a cast error on non-ObjectId busIds is expected for mock data
-    }
+    } catch (_) {}
 
     // Post-booking: update traveller stats and auto-save new travellers
     if (passengers && passengers.length > 0) {
