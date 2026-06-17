@@ -144,9 +144,13 @@ function BusListingContent() {
 
   function hasDeparted(bus) {
     if (!date) return false;
-    const todayStr = new Date().toISOString().split("T")[0];
-    if (date !== todayStr) return false;
+    // Use local date (not UTC) so IST users get the correct calendar date
     const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const todayLocal = `${y}-${mo}-${d}`;
+    if (date !== todayLocal) return false;
     const [h, m] = bus.departure.split(":").map(Number);
     return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
   }
