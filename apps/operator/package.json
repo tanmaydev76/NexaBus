@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@nexabus/db": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^1.18.0",
     "next": "14.2.35",
     "react": "^18",
