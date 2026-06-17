@@ -7,5 +7,10 @@
     "dev:operator": "pnpm --filter operator dev",
     "build:user": "pnpm --filter user build",
     "build:operator": "pnpm --filter operator build"
-  }
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "packageManager": "pnpm@11.7.0"
 }
