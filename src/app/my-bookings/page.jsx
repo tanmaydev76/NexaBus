@@ -12,11 +12,47 @@ import Link from "next/link";
 
 const TABS = ["All", "Upcoming", "Completed", "Cancelled"];
 
-function statusBadge(status) {
-  if (status === "confirmed") {
+// Derive effective trip status from booking fields (no DB write needed)
+function getTripStatus(booking) {
+  if (booking.status === "cancelled") return "cancelled";
+  const { date, departure, arrival } = booking;
+  if (!date || !departure || !arrival) return "confirmed";
+
+  const [y, mo, d] = date.split("-").map(Number);
+
+  const [depH, depM] = departure.split(":").map(Number);
+  const depAt = new Date(y, mo - 1, d, depH, depM, 0);
+
+  const [arrH, arrM] = arrival.split(":").map(Number);
+  const arrAt = new Date(y, mo - 1, d, arrH, arrM, 0);
+  // Overnight bus: arrival time earlier than departure → next calendar day
+  if (arrAt <= depAt) arrAt.setDate(arrAt.getDate() + 1);
+
+  const now = new Date();
+  if (now >= arrAt) return "completed";
+  if (now >= depAt) return "in_progress";
+  return "confirmed";
+}
+
+function statusBadge(tripStatus) {
+  if (tripStatus === "confirmed") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
         <CheckCircle size={11} /> Confirmed
+      </span>
+    );
+  }
+  if (tripStatus === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+        <Bus size={11} /> In Progress
+      </span>
+    );
+  }
+  if (tripStatus === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+        <CheckCircle size={11} /> Completed
       </span>
     );
   }
@@ -32,7 +68,8 @@ function BookingCard({ booking, onCancel }) {
   const [cancelling, setCancelling] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const isUpcoming = booking.status === "confirmed";
+  const tripStatus = getTripStatus(booking);
+  const canCancel = tripStatus === "confirmed";
 
   async function handleCancel() {
     setCancelling(true);
@@ -58,7 +95,7 @@ function BookingCard({ booking, onCancel }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="font-mono text-xs font-bold text-gray-400 tracking-wide">{booking.bookingId}</span>
-              {statusBadge(booking.status)}
+              {statusBadge(tripStatus)}
             </div>
             <div className="flex items-center gap-1.5 text-gray-900 font-bold text-base mt-1">
               <span>{booking.from}</span>
@@ -107,7 +144,7 @@ function BookingCard({ booking, onCancel }) {
             {expanded ? "Hide details" : "View details"}
             <ChevronDown size={14} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
           </button>
-          {isUpcoming && !showConfirm && (
+          {canCancel && !showConfirm && (
             <button
               onClick={() => setShowConfirm(true)}
               className="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
@@ -115,7 +152,7 @@ function BookingCard({ booking, onCancel }) {
               Cancel booking
             </button>
           )}
-          {isUpcoming && showConfirm && (
+          {canCancel && showConfirm && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Confirm cancel?</span>
               <button
@@ -234,9 +271,10 @@ export default function MyBookingsPage() {
 
   const filtered = bookings.filter((b) => {
     if (tab === "All") return true;
-    if (tab === "Upcoming") return b.status === "confirmed";
-    if (tab === "Cancelled") return b.status === "cancelled";
-    if (tab === "Completed") return false; // future: date-based logic
+    const s = getTripStatus(b);
+    if (tab === "Upcoming") return s === "confirmed" || s === "in_progress";
+    if (tab === "Completed") return s === "completed";
+    if (tab === "Cancelled") return s === "cancelled";
     return true;
   });
 
@@ -259,8 +297,9 @@ export default function MyBookingsPage() {
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
         {TABS.map((t) => {
           const count = t === "All" ? bookings.length
-            : t === "Upcoming" ? bookings.filter((b) => b.status === "confirmed").length
-            : t === "Cancelled" ? bookings.filter((b) => b.status === "cancelled").length
+            : t === "Upcoming" ? bookings.filter((b) => { const s = getTripStatus(b); return s === "confirmed" || s === "in_progress"; }).length
+            : t === "Completed" ? bookings.filter((b) => getTripStatus(b) === "completed").length
+            : t === "Cancelled" ? bookings.filter((b) => getTripStatus(b) === "cancelled").length
             : 0;
           return (
             <button
@@ -287,14 +326,23 @@ export default function MyBookingsPage() {
           <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <Ticket size={28} className="text-blue-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-1">No bookings yet</h3>
-          <p className="text-sm text-gray-400 mb-6">Book your first bus ticket and it&apos;ll appear here</p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors"
-          >
-            Search Buses <ChevronRight size={16} />
-          </Link>
+          <h3 className="text-lg font-semibold text-gray-700 mb-1">
+            {tab === "Completed" ? "No completed trips yet"
+              : tab === "Cancelled" ? "No cancelled bookings"
+              : tab === "Upcoming" ? "No upcoming trips"
+              : "No bookings yet"}
+          </h3>
+          <p className="text-sm text-gray-400 mb-6">
+            {tab === "All" ? "Book your first bus ticket and it'll appear here" : "Nothing to show in this category"}
+          </p>
+          {tab === "All" && (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-6 py-3 rounded-xl transition-colors"
+            >
+              Search Buses <ChevronRight size={16} />
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
