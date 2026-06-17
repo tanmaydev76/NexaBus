@@ -18,6 +18,20 @@ body {
   }
 }
 
+/* SVG checkmark draw-in animations */
+@keyframes circleDraw {
+  from { stroke-dashoffset: 144; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes checkDraw {
+  from { stroke-dashoffset: 48; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes progressBar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

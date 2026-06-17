@@ -2,13 +2,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Ticket, MapPin, Calendar, Users, ChevronRight,
-  ChevronDown, X, AlertTriangle, ArrowRight, Clock,
-  CheckCircle, XCircle, Bus,
+  Ticket, ChevronRight, ChevronDown, ArrowRight,
+  Calendar, Clock, CheckCircle, XCircle, Bus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import CancelBookingModal from "@/components/CancelBookingModal";
+import BookingCancelledSuccessModal from "@/components/BookingCancelledSuccessModal";
 
 const TABS = ["All", "Upcoming", "Completed", "Cancelled"];
 
@@ -16,21 +17,36 @@ const TABS = ["All", "Upcoming", "Completed", "Cancelled"];
 function getTripStatus(booking) {
   if (booking.status === "cancelled") return "cancelled";
   const { date, departure, arrival } = booking;
-  if (!date || !departure || !arrival) return "confirmed";
-
-  const [y, mo, d] = date.split("-").map(Number);
-
-  const [depH, depM] = departure.split(":").map(Number);
-  const depAt = new Date(y, mo - 1, d, depH, depM, 0);
-
-  const [arrH, arrM] = arrival.split(":").map(Number);
-  const arrAt = new Date(y, mo - 1, d, arrH, arrM, 0);
-  // Overnight bus: arrival time earlier than departure → next calendar day
-  if (arrAt <= depAt) arrAt.setDate(arrAt.getDate() + 1);
+  if (!date) return "confirmed";
 
   const now = new Date();
-  if (now >= arrAt) return "completed";
-  if (now >= depAt) return "in_progress";
+  const [y, mo, d] = date.split("-").map(Number);
+
+  // Full data path: precise departure + arrival datetimes
+  if (departure && arrival) {
+    const [depH, depM] = departure.split(":").map(Number);
+    const depAt = new Date(y, mo - 1, d, depH, depM, 0);
+
+    const [arrH, arrM] = arrival.split(":").map(Number);
+    const arrAt = new Date(y, mo - 1, d, arrH, arrM, 0);
+    // Overnight bus: arrival earlier than departure → next calendar day
+    if (arrAt <= depAt) arrAt.setDate(arrAt.getDate() + 1);
+
+    if (now >= arrAt) return "completed";
+    if (now >= depAt) return "in_progress";
+    return "confirmed";
+  }
+
+  // Fallback for older bookings without arrival stored
+  const endOfJourneyDay = new Date(y, mo - 1, d, 23, 59, 59);
+  if (now > endOfJourneyDay) return "completed";
+
+  if (departure) {
+    const [depH, depM] = departure.split(":").map(Number);
+    const depAt = new Date(y, mo - 1, d, depH, depM, 0);
+    if (now >= depAt) return "in_progress";
+  }
+
   return "confirmed";
 }
 
@@ -63,38 +79,20 @@ function statusBadge(tripStatus) {
   );
 }
 
-function BookingCard({ booking, onCancel }) {
+function BookingCard({ booking, onCancelClick }) {
   const [expanded, setExpanded] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
   const tripStatus = getTripStatus(booking);
   const canCancel = tripStatus === "confirmed";
 
-  async function handleCancel() {
-    setCancelling(true);
-    try {
-      const res = await fetch(`/api/bookings/${booking.bookingId}/cancel`, { method: "PUT" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast.success("Booking cancelled successfully");
-      onCancel(booking.bookingId);
-    } catch (err) {
-      toast.error(err.message || "Cancellation failed");
-    } finally {
-      setCancelling(false);
-      setShowConfirm(false);
-    }
-  }
-
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      {/* Header row */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold text-gray-400 tracking-wide">{booking.bookingId}</span>
+              <span className="font-mono text-xs font-bold text-gray-400 tracking-wide">
+                {booking.bookingId}
+              </span>
               {statusBadge(tripStatus)}
             </div>
             <div className="flex items-center gap-1.5 text-gray-900 font-bold text-base mt-1">
@@ -115,7 +113,9 @@ function BookingCard({ booking, onCancel }) {
           </div>
           <div className="text-right flex-shrink-0">
             <p className="text-lg font-bold text-blue-600">₹{booking.total}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{booking.seats?.length || 0} seat{booking.seats?.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {booking.seats?.length || 0} seat{booking.seats?.length !== 1 ? "s" : ""}
+            </p>
           </div>
         </div>
 
@@ -129,7 +129,10 @@ function BookingCard({ booking, onCancel }) {
         {/* Seats */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {booking.seats?.map((s, i) => (
-            <span key={i} className="bg-blue-50 text-blue-700 font-semibold text-xs px-2 py-0.5 rounded-md border border-blue-100">
+            <span
+              key={i}
+              className="bg-blue-50 text-blue-700 font-semibold text-xs px-2 py-0.5 rounded-md border border-blue-100"
+            >
               {s.number}
             </span>
           ))}
@@ -138,37 +141,22 @@ function BookingCard({ booking, onCancel }) {
         {/* Actions */}
         <div className="flex items-center justify-between mt-4">
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => setExpanded((v) => !v)}
             className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
           >
             {expanded ? "Hide details" : "View details"}
-            <ChevronDown size={14} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
           </button>
-          {canCancel && !showConfirm && (
+          {canCancel && (
             <button
-              onClick={() => setShowConfirm(true)}
-              className="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
+              onClick={() => onCancelClick(booking)}
+              className="text-xs font-semibold text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 active:bg-red-100 transition-colors"
             >
               Cancel booking
             </button>
-          )}
-          {canCancel && showConfirm && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Confirm cancel?</span>
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                {cancelling ? "…" : "Yes, cancel"}
-              </button>
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                No
-              </button>
-            </div>
           )}
         </div>
       </div>
@@ -176,7 +164,6 @@ function BookingCard({ booking, onCancel }) {
       {/* Expanded details */}
       {expanded && (
         <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-4">
-          {/* Route points */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Boarding</p>
@@ -188,7 +175,6 @@ function BookingCard({ booking, onCancel }) {
             </div>
           </div>
 
-          {/* Fare breakdown */}
           <div>
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Fare Breakdown</p>
             <div className="space-y-1 text-sm">
@@ -212,13 +198,15 @@ function BookingCard({ booking, onCancel }) {
             </div>
           </div>
 
-          {/* Passengers */}
           {booking.passengers?.length > 0 && (
             <div>
               <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Passengers</p>
               <div className="space-y-1.5">
                 {booking.passengers.map((p, i) => (
-                  <div key={i} className="flex items-center gap-3 text-sm bg-white rounded-lg px-3 py-2 border border-gray-100">
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 text-sm bg-white rounded-lg px-3 py-2 border border-gray-100"
+                  >
                     <span className="font-semibold text-blue-600 min-w-[28px]">{p.seatNumber}</span>
                     <span className="text-gray-800 font-medium">{p.name}</span>
                     <span className="text-gray-400 text-xs capitalize">{p.gender} · {p.age}y</span>
@@ -240,6 +228,11 @@ export default function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal state
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const fetchBookings = useCallback(async () => {
     try {
       const res = await fetch("/api/bookings");
@@ -258,15 +251,30 @@ export default function MyBookingsPage() {
       router.push("/auth/login?redirect=/my-bookings");
       return;
     }
-    if (!authLoading && user) {
-      fetchBookings();
-    }
+    if (!authLoading && user) fetchBookings();
   }, [authLoading, user, router, fetchBookings]);
 
-  function handleCancel(bookingId) {
-    setBookings((prev) =>
-      prev.map((b) => b.bookingId === bookingId ? { ...b, status: "cancelled", cancelledAt: new Date().toISOString() } : b)
-    );
+  async function handleCancelConfirm() {
+    if (!cancelTarget) return;
+    setIsCancelling(true);
+    try {
+      const res = await fetch(`/api/bookings/${cancelTarget.bookingId}/cancel`, { method: "PUT" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.bookingId === cancelTarget.bookingId
+            ? { ...b, status: "cancelled", cancelledAt: new Date().toISOString() }
+            : b
+        )
+      );
+      setCancelTarget(null);
+      setShowSuccess(true);
+    } catch (err) {
+      toast.error(err.message || "Unable to cancel booking. Please try again.");
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   const filtered = bookings.filter((b) => {
@@ -296,11 +304,11 @@ export default function MyBookingsPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
         {TABS.map((t) => {
-          const count = t === "All" ? bookings.length
+          const count =
+            t === "All" ? bookings.length
             : t === "Upcoming" ? bookings.filter((b) => { const s = getTripStatus(b); return s === "confirmed" || s === "in_progress"; }).length
             : t === "Completed" ? bookings.filter((b) => getTripStatus(b) === "completed").length
-            : t === "Cancelled" ? bookings.filter((b) => getTripStatus(b) === "cancelled").length
-            : 0;
+            : bookings.filter((b) => getTripStatus(b) === "cancelled").length;
           return (
             <button
               key={t}
@@ -311,7 +319,11 @@ export default function MyBookingsPage() {
             >
               {t}
               {count > 0 && (
-                <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${tab === t ? "bg-blue-100 text-blue-600" : "bg-gray-200 text-gray-500"}`}>
+                <span
+                  className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                    tab === t ? "bg-blue-100 text-blue-600" : "bg-gray-200 text-gray-500"
+                  }`}
+                >
                   {count}
                 </span>
               )}
@@ -333,7 +345,9 @@ export default function MyBookingsPage() {
               : "No bookings yet"}
           </h3>
           <p className="text-sm text-gray-400 mb-6">
-            {tab === "All" ? "Book your first bus ticket and it'll appear here" : "Nothing to show in this category"}
+            {tab === "All"
+              ? "Book your first bus ticket and it'll appear here"
+              : "Nothing to show in this category"}
           </p>
           {tab === "All" && (
             <Link
@@ -347,9 +361,28 @@ export default function MyBookingsPage() {
       ) : (
         <div className="space-y-4">
           {filtered.map((booking) => (
-            <BookingCard key={booking.bookingId} booking={booking} onCancel={handleCancel} />
+            <BookingCard
+              key={booking.bookingId}
+              booking={booking}
+              onCancelClick={setCancelTarget}
+            />
           ))}
         </div>
+      )}
+
+      {/* Cancel confirmation modal */}
+      {cancelTarget && (
+        <CancelBookingModal
+          booking={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={handleCancelConfirm}
+          isCancelling={isCancelling}
+        />
+      )}
+
+      {/* Success modal */}
+      {showSuccess && (
+        <BookingCancelledSuccessModal onClose={() => setShowSuccess(false)} />
       )}
     </div>
   );
