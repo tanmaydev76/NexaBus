@@ -79,6 +79,42 @@ export async function GET(req, { params }) {
     }
   }
 
+  // For each female-booked seat, find its adjacent seat and retroactively mark it
+  // as 'ladies' if it is still available (fixes bookings made before this feature)
+  if (femaleBookedSeatIds.size > 0) {
+    const seatsPerRow = isSleeper ? 3 : 4;
+    const adjacentToFemale = new Set();
+    for (const seatId of femaleBookedSeatIds) {
+      const n = parseInt(seatId.replace(/\D/g, ''), 10);
+      if (!n) continue;
+      const pos = (n - 1) % seatsPerRow;
+      let adj = null;
+      if (isSleeper) {
+        if (pos === 1) adj = `S${n + 1}`;
+        else if (pos === 2) adj = `S${n - 1}`;
+      } else {
+        if (pos === 0) adj = `S${n + 1}`;
+        else if (pos === 1) adj = `S${n - 1}`;
+        else if (pos === 2) adj = `S${n + 1}`;
+        else if (pos === 3) adj = `S${n - 1}`;
+      }
+      if (adj) adjacentToFemale.add(adj);
+    }
+
+    if (adjacentToFemale.size > 0) {
+      await TripSeat.updateMany(
+        { tripId: trip._id, seatId: { $in: [...adjacentToFemale] }, status: 'available' },
+        { $set: { status: 'ladies' } }
+      );
+      // Update in-memory so the response reflects the change without a refetch
+      for (const ts of tripSeats) {
+        if (adjacentToFemale.has(ts.seatId) && ts.status === 'available') {
+          ts.status = 'ladies';
+        }
+      }
+    }
+  }
+
   const seatObjects = tripSeats
     .sort((a, b) => {
       const na = parseInt(a.seatId.replace(/\D/g, ''), 10) || 0;
