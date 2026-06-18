@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   Search, Bus, CalendarDays, UserRound, ArrowLeftRight, Clock, X,
 } from "lucide-react";
-import { cities } from "@/lib/mockData";
+import { cities as staticCities } from "@/lib/mockData";
 import useBookingStore from "@/store/bookingStore";
 import { format, addDays, isToday, isTomorrow } from "date-fns";
 import { createPortal } from "react-dom";
@@ -37,7 +37,7 @@ function Highlight({ text, query }) {
 }
 
 // ─── Mobile fullscreen city picker ────────────────────────────────────────────
-function MobileCityPicker({ label, search, onSearch, onSelect, selectedCity, excludeCity, onClose }) {
+function MobileCityPicker({ label, search, onSearch, onSelect, selectedCity, excludeCity, onClose, cities }) {
   const [recent, setRecent] = useState([]);
   const inputRef = useRef(null);
 
@@ -120,7 +120,7 @@ function MobileCityPicker({ label, search, onSearch, onSelect, selectedCity, exc
 }
 
 // ─── Desktop portalled city dropdown ──────────────────────────────────────────
-function DesktopCityDropdown({ anchorRef, search, onSearch, onSelect, selectedCity, excludeCity, onClose }) {
+function DesktopCityDropdown({ anchorRef, search, onSearch, onSelect, selectedCity, excludeCity, onClose, cities }) {
   const [recent, setRecent] = useState([]);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 320 });
   const dropRef = useRef(null);
@@ -254,6 +254,21 @@ export default function SearchForm() {
   const [swapAngle, setSwapAngle] = useState(0);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isMobile, setIsMobile]   = useState(false);
+  const [cities, setCities]       = useState(staticCities);
+
+  // Fetch live cities from the DB (adds any city an operator has set as a stop).
+  useEffect(() => {
+    fetch("/api/cities")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.cities?.length) {
+          // Merge DB cities with static list, deduplicate, sort.
+          const merged = [...new Set([...staticCities, ...data.cities])].sort();
+          setCities(merged);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fromBtnRef   = useRef(null);
   const toBtnRef     = useRef(null);
@@ -392,6 +407,7 @@ export default function SearchForm() {
                   selectedCity={from}
                   excludeCity={to}
                   onClose={closeFrom}
+                  cities={cities}
                 />
               )}
               {fromOpen && !isMobile && (
@@ -403,6 +419,7 @@ export default function SearchForm() {
                   selectedCity={from}
                   excludeCity={to}
                   onClose={closeFrom}
+                  cities={cities}
                 />
               )}
             </div>
@@ -446,6 +463,7 @@ export default function SearchForm() {
                   selectedCity={to}
                   excludeCity={from}
                   onClose={closeTo}
+                  cities={cities}
                 />
               )}
               {toOpen && !isMobile && (
@@ -457,6 +475,7 @@ export default function SearchForm() {
                   selectedCity={to}
                   excludeCity={from}
                   onClose={closeTo}
+                  cities={cities}
                 />
               )}
             </div>

@@ -1,16 +1,35 @@
 export const cities = [
-  "Mumbai",
-  "Pune",
-  "Nashik",
-  "Nagpur",
-  "Aurangabad",
-  "Kolhapur",
-  "Solapur",
-  "Satara",
-  "Ahmednagar",
-  "Jalgaon",
-  "Amalner",
-];
+  // Major cities
+  "Mumbai", "Thane", "Navi Mumbai", "Pune", "Pimpri-Chinchwad", "Nagpur", "Nashik",
+  "Aurangabad", "Solapur", "Kolhapur", "Amravati", "Nanded", "Sangli", "Miraj",
+  "Satara", "Latur", "Jalgaon", "Akola", "Dhule", "Ahmednagar", "Ratnagiri",
+  "Chandrapur", "Yavatmal", "Nandurbar", "Wardha", "Bhandara", "Gondia",
+  "Gadchiroli", "Osmanabad", "Beed", "Parbhani", "Hingoli", "Buldhana", "Washim",
+
+  // Thane district & Konkan
+  "Kalyan", "Dombivli", "Ulhasnagar", "Bhiwandi", "Vasai", "Virar", "Mira Road",
+  "Panvel", "Khopoli", "Karjat", "Pen", "Alibag", "Roha", "Murud", "Mahad",
+  "Shrivardhan", "Dapoli", "Guhagar", "Chiplun", "Rajapur", "Ratnagiri",
+  "Lanja", "Sangameshwar", "Deogad", "Kankavli", "Kudal", "Sawantwadi",
+  "Malvan", "Vengurla", "Sindhudurg",
+
+  // Pune district & Sahyadri
+  "Lonavala", "Khandala", "Mahabaleshwar", "Panchgani", "Wai", "Shirur",
+  "Daund", "Baramati", "Indapur", "Rajgurunagar", "Alandi", "Junnar", "Ambegaon",
+
+  // Kolhapur district
+  "Ichalkaranji", "Karad", "Kagal", "Radhanagari", "Gadhinglaj", "Ajara",
+  "Chandgad", "Bhudargad", "Panhala", "Hatkanangale", "Shirol", "Karvir",
+  "Nipani", "Tasgaon",
+
+  // Nashik & North Maharashtra
+  "Shirdi", "Kopargaon", "Sangamner", "Igatpuri", "Manmad", "Yeola",
+  "Sinnar", "Trimbakeshwar", "Malegaon",
+
+  // Marathwada
+  "Pandharpur", "Barshi", "Akkalkot", "Osmanabad", "Tuljapur",
+  "Udgir", "Amalner", "Islampur",
+].sort();
 
 export const popularRoutes = [
   { from: "Mumbai", to: "Pune", duration: "3h 30m", price: 350 },

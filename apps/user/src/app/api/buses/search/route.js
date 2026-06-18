@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import { connectDB, Trip, Bus, Route, TripSeat, Operator } from '@nexabus/db';
 
+// Returns ordered stop list: [origin, ...intermediate stops, destination]
+// Each entry has { name, time } where time is departure time at that stop.
+function getStopSequence(route, tripDeparture, tripArrival) {
+  const seq = [{ name: route.origin, time: tripDeparture }];
+  for (const s of route.stops || []) {
+    if (s.name) seq.push({ name: s.name, time: s.departureTime || s.arrivalTime || '' });
+  }
+  seq.push({ name: route.destination, time: tripArrival });
+  return seq;
+}
+
+// Returns the index of cityName in the stop sequence (-1 if not found).
+function findInSequence(seq, cityName) {
+  const rx = new RegExp(cityName.trim(), 'i');
+  return seq.findIndex((s) => rx.test(s.name));
+}
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from')?.trim() || '';
@@ -16,10 +33,13 @@ export async function GET(req) {
   const fromReg = new RegExp(from, 'i');
   const toReg   = new RegExp(to,   'i');
 
+  // Match routes where from/to appear as origin, destination, OR any stop name.
   const routes = await Route.find({
-    origin:      fromReg,
-    destination: toReg,
-    status:      'active',
+    status: 'active',
+    $and: [
+      { $or: [{ origin: fromReg }, { destination: fromReg }, { 'stops.name': fromReg }] },
+      { $or: [{ origin: toReg   }, { destination: toReg   }, { 'stops.name': toReg   }] },
+    ],
   }).lean();
 
   if (!routes.length) return NextResponse.json({ buses: [] });
@@ -61,39 +81,53 @@ export async function GET(req) {
     const route    = routeMap[trip.routeId.toString()];
     if (!bus || !route) return null;
 
-    const tripId    = trip._id.toString();
-    const tripSeats = seatsByTrip[tripId] || [];
-    const totalSeats = bus.totalSeats || 40;
-    const availableSeats = tripSeats.length > 0
-      ? tripSeats.filter((s) => s.status === 'available' || s.status === 'ladies').length
-      : totalSeats;
-
-    const busType  = bus.busType || 'Seater';
-    const isAC     = busType.toLowerCase().includes('ac');
-    const isSleeper = busType.toLowerCase().includes('sleeper');
-    const isVolvo  = (bus.amenities || []).some((a) => typeof a === 'string' && a.toLowerCase() === 'volvo');
-
     const dept = trip.departureTime || '00:00';
     const arrv = trip.arrivalTime   || '00:00';
-    const [dh, dm] = dept.split(':').map(Number);
-    const [ah, am] = arrv.split(':').map(Number);
+
+    // Verify from appears before to in the stop sequence for this trip.
+    const seq      = getStopSequence(route, dept, arrv);
+    const fromIdx  = findInSequence(seq, from);
+    const toIdx    = findInSequence(seq, to);
+    if (fromIdx === -1 || toIdx === -1 || fromIdx >= toIdx) return null;
+
+    // Use the actual stop names and times for boarding/alighting.
+    const boardingStop  = seq[fromIdx];
+    const alightingStop = seq[toIdx];
+    const boardingTime  = boardingStop.time  || dept;
+    const alightingTime = alightingStop.time || arrv;
+
+    const [dh, dm] = boardingTime.split(':').map(Number);
+    const [ah, am] = alightingTime.split(':').map(Number);
     let totalMin = (ah * 60 + am) - (dh * 60 + dm);
     if (totalMin < 0) totalMin += 24 * 60;
     const durH = Math.floor(totalMin / 60);
     const durM = totalMin % 60;
     const duration = durM > 0 ? `${durH}h ${durM}m` : `${durH}h`;
 
-    const stops = (route.stops || []).length > 0
-      ? route.stops.map((s) => ({ name: s.name, time: s.departureTime || s.arrivalTime || '' }))
-      : [{ name: route.origin, time: dept }, { name: route.destination, time: arrv }];
+    const tripId     = trip._id.toString();
+    const tripSeats  = seatsByTrip[tripId] || [];
+    const totalSeats = bus.totalSeats || 40;
+    const availableSeats = tripSeats.length > 0
+      ? tripSeats.filter((s) => s.status === 'available' || s.status === 'ladies').length
+      : totalSeats;
+
+    const busType   = bus.busType || 'Seater';
+    const isAC      = busType.toLowerCase().includes('ac');
+    const isSleeper = busType.toLowerCase().includes('sleeper');
+    const isVolvo   = (bus.amenities || []).some(
+      (a) => typeof a === 'string' && a.toLowerCase() === 'volvo',
+    );
+
+    // All stops visible to the user (full route stops for boarding/drop selection).
+    const stops = seq.map((s) => ({ name: s.name, time: s.time || '' }));
 
     return {
       id:              tripId,
       operator:        operator?.companyName || operator?.name || bus.busName,
       type:            busType,
       busType,
-      departure:       dept,
-      arrival:         arrv,
+      departure:       boardingTime,
+      arrival:         alightingTime,
       duration,
       price:           trip.fare,
       totalSeats,
@@ -107,8 +141,8 @@ export async function GET(req) {
       isVolvo,
       isSingleWindow:  false,
       stops,
-      from:            route.origin,
-      to:              route.destination,
+      from:            boardingStop.name,
+      to:              alightingStop.name,
     };
   }).filter(Boolean);
 
