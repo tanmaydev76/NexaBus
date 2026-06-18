@@ -258,6 +258,7 @@ export default function SearchForm() {
   const fromBtnRef   = useRef(null);
   const toBtnRef     = useRef(null);
   const tooltipRef   = useRef(null);
+  const dateInputRef = useRef(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -468,15 +469,19 @@ export default function SearchForm() {
               <div className={`flex items-center gap-2 px-4 sm:px-5 py-4 sm:py-5 hover:bg-gray-50 transition-colors h-full
                 ${errors.date ? "ring-2 ring-inset ring-red-400" : ""}`}>
 
-                {/* Transparent native date input covers left side — works on iOS Safari */}
-                <div className="relative flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+                {/* Tapping the label area programmatically opens the native date picker */}
+                <div
+                  className="relative flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                  onClick={() => dateInputRef.current?.showPicker ? dateInputRef.current.showPicker() : dateInputRef.current?.click()}
+                >
                   <input
+                    ref={dateInputRef}
                     type="date"
                     value={date}
                     min={todayStr}
                     max={maxDateStr}
                     onChange={(e) => { setDate(e.target.value); setErrors((er) => ({ ...er, date: false })); }}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   />
                   <CalendarDays size={20} className="text-gray-400 flex-shrink-0 pointer-events-none" />
                   <div className="pointer-events-none min-w-0">
