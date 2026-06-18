@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB, Trip, Bus, TripSeat } from '@nexabus/db';
+import { connectDB, Trip, Bus, TripSeat, Booking } from '@nexabus/db';
 
 function buildSeaterRows(seats) {
   // 2+2 layout: W A null(gap) A W = 5 columns
@@ -63,6 +63,22 @@ export async function GET(req, { params }) {
     tripSeats = await TripSeat.find({ tripId: trip._id }).lean();
   }
 
+  // Find which booked seats were booked by female passengers
+  const bookedWithId = tripSeats.filter((s) => s.status === 'booked' && s.bookingId);
+  const femaleBookedSeatIds = new Set();
+  if (bookedWithId.length > 0) {
+    const bookingIds = [...new Set(bookedWithId.map((s) => s.bookingId.toString()))];
+    const bookings = await Booking.find({ _id: { $in: bookingIds } })
+      .select('seats passengers')
+      .lean();
+    for (const booking of bookings) {
+      for (const seat of (booking.seats || [])) {
+        const passenger = (booking.passengers || []).find((p) => p.seatNumber === seat.number);
+        if (passenger?.gender === 'Female') femaleBookedSeatIds.add(seat.id);
+      }
+    }
+  }
+
   const seatObjects = tripSeats
     .sort((a, b) => {
       const na = parseInt(a.seatId.replace(/\D/g, ''), 10) || 0;
@@ -74,7 +90,7 @@ export async function GET(req, { params }) {
       number:       ts.seatNumber,
       type:         'aisle',
       status:       ts.status,
-      isFemaleOnly: ts.status === 'ladies',
+      isFemaleOnly: ts.status === 'ladies' || femaleBookedSeatIds.has(ts.seatId),
     }));
 
   let layout;
