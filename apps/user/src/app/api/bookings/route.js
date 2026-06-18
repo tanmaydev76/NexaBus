@@ -1,11 +1,32 @@
 import { NextResponse } from 'next/server';
 
 
-import { connectDB, Booking, Traveller, Trip, TripSeat } from '@nexabus/db';
+import { connectDB, Booking, Traveller, Trip, TripSeat, Bus } from '@nexabus/db';
 import { requireAuth } from '@/lib/middleware/auth';
 
 function generateBookingId() {
   return 'NB' + Math.random().toString(36).substr(2, 8).toUpperCase();
+}
+
+// Returns the seatId of the seat adjacent (same row, same pair) to the given seat.
+// Sleeper: 3 seats/row — left solo (pos 0) has no pair; right pair is pos 1 & 2.
+// Seater:  4 seats/row — left pair is pos 0 & 1; right pair is pos 2 & 3.
+function getAdjacentSeatId(seatId, isSleeper) {
+  const n = parseInt(seatId.replace(/\D/g, ''), 10);
+  if (!n) return null;
+  const seatsPerRow = isSleeper ? 3 : 4;
+  const pos = (n - 1) % seatsPerRow;
+  if (isSleeper) {
+    if (pos === 0) return null;          // left solo
+    if (pos === 1) return `S${n + 1}`;  // right-aisle → right-window
+    if (pos === 2) return `S${n - 1}`;  // right-window → right-aisle
+  } else {
+    if (pos === 0) return `S${n + 1}`;  // left-window → left-aisle
+    if (pos === 1) return `S${n - 1}`;  // left-aisle  → left-window
+    if (pos === 2) return `S${n + 1}`;  // right-aisle → right-window
+    if (pos === 3) return `S${n - 1}`;  // right-window → right-aisle
+  }
+  return null;
 }
 
 export async function POST(req) {
@@ -49,6 +70,22 @@ export async function POST(req) {
           { status: 409 }
         );
       }
+
+      // Validate ladies-only seats: non-female passengers cannot book them
+      const ladiesSeats = await TripSeat.find({
+        tripId: trip._id,
+        seatId: { $in: seatIds },
+        status: 'ladies',
+      }).lean();
+      for (const ls of ladiesSeats) {
+        const passenger = (passengers || []).find((p) => p.seatNumber === ls.seatNumber);
+        if (passenger && passenger.gender !== 'Female') {
+          return NextResponse.json(
+            { error: `Seat ${ls.seatNumber} is reserved for female passengers only.` },
+            { status: 409 }
+          );
+        }
+      }
     }
 
     const bookingId = generateBookingId();
@@ -69,6 +106,23 @@ export async function POST(req) {
         { $set: { status: 'booked', bookingId: booking._id } }
       );
       await Booking.findByIdAndUpdate(booking._id, { operatorId: trip.operatorId, tripId: trip._id });
+
+      // Auto-mark the seat adjacent to each female passenger as ladies-only
+      const bus = await Bus.findById(trip.busId).select('busType').lean();
+      const isSleeper = (bus?.busType || '').toLowerCase().includes('sleeper');
+      const femaleSeats = (passengers || [])
+        .filter((p) => p.gender === 'Female')
+        .map((p) => p.seatNumber)
+        .filter(Boolean);
+      if (femaleSeats.length > 0) {
+        const adjacentIds = femaleSeats.map((sn) => getAdjacentSeatId(sn, isSleeper)).filter(Boolean);
+        if (adjacentIds.length > 0) {
+          await TripSeat.updateMany(
+            { tripId: trip._id, seatId: { $in: adjacentIds }, status: 'available' },
+            { $set: { status: 'ladies' } }
+          );
+        }
+      }
     }
 
     // Post-booking: update traveller stats and auto-save new travellers
