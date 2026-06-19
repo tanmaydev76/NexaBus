@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 
+const stopPointSchema = new mongoose.Schema({
+  name:          { type: String, required: true, trim: true },
+  time:          { type: String, default: '' },
+  landmark:      { type: String, default: '' },
+  contactNumber: { type: String, default: '' },
+  order:         { type: Number, default: 0 },
+}, { _id: true });
+
 const routeSchema = new mongoose.Schema({
   operatorId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Operator', required: true },
   routeName:          { type: String, trim: true, default: '' },
@@ -16,6 +24,8 @@ const routeSchema = new mongoose.Schema({
     offsetMinutes: { type: Number, default: 0 },
     _id: false,
   }],
+  boardingPoints: { type: [stopPointSchema], default: [] },
+  droppingPoints: { type: [stopPointSchema], default: [] },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
 }, { timestamps: true });
 

@@ -121,6 +121,14 @@ export async function GET(req) {
     // All stops visible to the user (full route stops for boarding/drop selection).
     const stops = seq.map((s) => ({ name: s.name, time: s.time || '' }));
 
+    // Dedicated boarding/dropping points defined by the operator on the route.
+    const boardingPoints = (route.boardingPoints || [])
+      .sort((a, b) => a.order - b.order)
+      .map((p) => ({ name: p.name, time: p.time, landmark: p.landmark || '' }));
+    const droppingPoints = (route.droppingPoints || [])
+      .sort((a, b) => a.order - b.order)
+      .map((p) => ({ name: p.name, time: p.time, landmark: p.landmark || '' }));
+
     return {
       id:              tripId,
       operator:        operator?.companyName || operator?.name || bus.busName,
@@ -141,6 +149,8 @@ export async function GET(req) {
       isVolvo,
       isSingleWindow:  false,
       stops,
+      boardingPoints,
+      droppingPoints,
       from:            boardingStop.name,
       to:              alightingStop.name,
     };

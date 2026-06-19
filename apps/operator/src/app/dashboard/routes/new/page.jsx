@@ -4,18 +4,28 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Plus, X } from "lucide-react";
 import toast from "react-hot-toast";
+import StopPointsSection from "@/components/StopPointsSection";
 
 function LabeledInput({ label, required, value, onChange, error, ...props }) {
   return (
     <div>
-      {label && <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
-      <input value={value} onChange={onChange}
+      {label && (
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
+      <input
+        value={value}
+        onChange={onChange}
         className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand ${error ? "border-red-400" : "border-slate-200"}`}
-        {...props} />
+        {...props}
+      />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }
+
+const emptyPoint = (order) => ({ name: "", time: "", landmark: "", contactNumber: "", order });
 
 export default function AddRoutePage() {
   const router = useRouter();
@@ -26,19 +36,50 @@ export default function AddRoutePage() {
     routeName: "", routeNumber: "", origin: "", destination: "",
     estimatedDuration: "", distance: "", status: "active",
     stops: [],
+    boardingPoints: [emptyPoint(1)],
+    droppingPoints: [emptyPoint(1)],
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const addStop = () => set("stops", [...form.stops, { name: "", arrivalTime: "", departureTime: "" }]);
+  // Via stops
+  const addStop    = () => set("stops", [...form.stops, { name: "", arrivalTime: "", departureTime: "" }]);
   const removeStop = (i) => set("stops", form.stops.filter((_, j) => j !== i));
   const updateStop = (i, k, v) => set("stops", form.stops.map((s, j) => j === i ? { ...s, [k]: v } : s));
+
+  // Boarding points
+  const addBoarding    = () => set("boardingPoints", [...form.boardingPoints, emptyPoint(form.boardingPoints.length + 1)]);
+  const removeBoarding = (i) => set("boardingPoints", form.boardingPoints.filter((_, j) => j !== i).map((p, j) => ({ ...p, order: j + 1 })));
+  const updateBoarding = (i, k, v) => set("boardingPoints", form.boardingPoints.map((p, j) => j === i ? { ...p, [k]: v } : p));
+  const moveBoarding   = (i, dir) => {
+    const pts = [...form.boardingPoints];
+    const j = i + dir;
+    if (j < 0 || j >= pts.length) return;
+    [pts[i], pts[j]] = [pts[j], pts[i]];
+    set("boardingPoints", pts.map((p, idx) => ({ ...p, order: idx + 1 })));
+  };
+
+  // Dropping points
+  const addDropping    = () => set("droppingPoints", [...form.droppingPoints, emptyPoint(form.droppingPoints.length + 1)]);
+  const removeDropping = (i) => set("droppingPoints", form.droppingPoints.filter((_, j) => j !== i).map((p, j) => ({ ...p, order: j + 1 })));
+  const updateDropping = (i, k, v) => set("droppingPoints", form.droppingPoints.map((p, j) => j === i ? { ...p, [k]: v } : p));
+  const moveDropping   = (i, dir) => {
+    const pts = [...form.droppingPoints];
+    const j = i + dir;
+    if (j < 0 || j >= pts.length) return;
+    [pts[i], pts[j]] = [pts[j], pts[i]];
+    set("droppingPoints", pts.map((p, idx) => ({ ...p, order: idx + 1 })));
+  };
 
   const validate = () => {
     const e = {};
     if (!form.routeName.trim()) e.routeName = "Route name is required";
     if (!form.origin.trim()) e.origin = "Origin is required";
     if (!form.destination.trim()) e.destination = "Destination is required";
+    if (!form.boardingPoints.length || form.boardingPoints.some((p) => !p.name.trim() || !p.time))
+      e.boardingPoints = "All boarding points need a name and time";
+    if (!form.droppingPoints.length || form.droppingPoints.some((p) => !p.name.trim() || !p.time))
+      e.droppingPoints = "All dropping points need a name and time";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -87,7 +128,7 @@ export default function AddRoutePage() {
           <div className="mt-4">
             <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
             <div className="flex gap-3">
-              {["active","inactive"].map((s) => (
+              {["active", "inactive"].map((s) => (
                 <button key={s} type="button" onClick={() => set("status", s)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium border-2 capitalize transition-all ${form.status === s ? (s === "active" ? "border-green-500 bg-green-50 text-green-700" : "border-red-400 bg-red-50 text-red-600") : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
                   {s}
@@ -97,16 +138,14 @@ export default function AddRoutePage() {
           </div>
         </div>
 
-        {/* Stops */}
+        {/* Via Stops */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800">Via Stops (optional)</h3>
+            <h3 className="font-semibold text-slate-800">Via Stops <span className="text-slate-400 font-normal text-sm">(optional)</span></h3>
             <button type="button" onClick={addStop} className="text-sm text-brand font-medium flex items-center gap-1 hover:text-brand-700">
               <Plus size={14} /> Add Stop
             </button>
           </div>
-
-          {/* Route preview */}
           <div className="flex items-center gap-2 flex-wrap mb-4 py-3 px-4 bg-slate-50 rounded-xl border border-slate-200 text-sm">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -125,11 +164,9 @@ export default function AddRoutePage() {
               <span className="font-semibold text-red-700">{form.destination || "Destination"}</span>
             </span>
           </div>
-
           {form.stops.length === 0 && (
             <p className="text-sm text-slate-400 text-center py-2">No intermediate stops. Click "Add Stop" to add one.</p>
           )}
-
           <div className="space-y-3">
             {form.stops.map((stop, i) => (
               <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
@@ -149,13 +186,44 @@ export default function AddRoutePage() {
             ))}
           </div>
         </div>
+
+        {/* Boarding Points */}
+        <StopPointsSection
+          title="Boarding Points"
+          color="green"
+          points={form.boardingPoints}
+          city={form.origin}
+          timeLabel="Pickup Time"
+          onAdd={addBoarding}
+          onRemove={removeBoarding}
+          onUpdate={updateBoarding}
+          onMoveUp={(i) => moveBoarding(i, -1)}
+          onMoveDown={(i) => moveBoarding(i, 1)}
+          error={errors.boardingPoints}
+        />
+
+        {/* Dropping Points */}
+        <StopPointsSection
+          title="Dropping Points"
+          color="red"
+          points={form.droppingPoints}
+          city={form.destination}
+          timeLabel="Arrival Time"
+          onAdd={addDropping}
+          onRemove={removeDropping}
+          onUpdate={updateDropping}
+          onMoveUp={(i) => moveDropping(i, -1)}
+          onMoveDown={(i) => moveDropping(i, 1)}
+          error={errors.droppingPoints}
+        />
       </div>
 
       <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-200">
         <Link href="/dashboard/routes" className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
           Cancel
         </Link>
-        <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-700 disabled:opacity-60">
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 px-5 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-700 disabled:opacity-60">
           {saving && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
           Create Route
         </button>
