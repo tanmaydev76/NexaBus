@@ -25,7 +25,7 @@ export async function POST(req) {
   if (error) return NextResponse.json({ error }, { status: 401 });
   await connectDB();
   const body = await req.json();
-  const { routeName, routeNumber, origin, destination, distance, estimatedDuration, stops, status } = body;
+  const { routeName, routeNumber, origin, destination, distance, estimatedDuration, stops, status, boardingPoints, droppingPoints } = body;
   if (!routeName?.trim()) return NextResponse.json({ error: 'Route name is required' }, { status: 400 });
   if (!origin?.trim()) return NextResponse.json({ error: 'Origin is required' }, { status: 400 });
   if (!destination?.trim()) return NextResponse.json({ error: 'Destination is required' }, { status: 400 });
@@ -38,6 +38,8 @@ export async function POST(req) {
     distance: Number(distance) || 0,
     estimatedDuration: estimatedDuration?.trim() || '',
     stops: (stops || []).filter((s) => s.name?.trim()),
+    boardingPoints: (boardingPoints || []).filter((p) => p.name?.trim()),
+    droppingPoints: (droppingPoints || []).filter((p) => p.name?.trim()),
     status: status || 'active',
   });
   return NextResponse.json({ route }, { status: 201 });

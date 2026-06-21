@@ -107,10 +107,14 @@ function applyFilters(buses, filters) {
     result = result.filter((b) => filters.operators.includes(b.operator));
 
   if (filters.boardingPoints.length > 0)
-    result = result.filter((b) => filters.boardingPoints.includes(b.stops[0].name));
+    result = result.filter((b) =>
+      (b.boardingPoints?.length ? b.boardingPoints : b.stops).some((p) => filters.boardingPoints.includes(p.name))
+    );
 
   if (filters.droppingPoints.length > 0)
-    result = result.filter((b) => filters.droppingPoints.includes(b.stops[b.stops.length - 1].name));
+    result = result.filter((b) =>
+      (b.droppingPoints?.length ? b.droppingPoints : b.stops).some((p) => filters.droppingPoints.includes(p.name))
+    );
 
   if (filters.amenities.length > 0)
     result = result.filter((b) => filters.amenities.every((a) => b.amenities.includes(a)));

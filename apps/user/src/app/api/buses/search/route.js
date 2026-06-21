@@ -12,9 +12,14 @@ function getStopSequence(route, tripDeparture, tripArrival) {
   return seq;
 }
 
+// Escape regex metacharacters in user-supplied strings to prevent injection/SyntaxError.
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Returns the index of cityName in the stop sequence (-1 if not found).
 function findInSequence(seq, cityName) {
-  const rx = new RegExp(cityName.trim(), 'i');
+  const rx = new RegExp(escapeRegex(cityName.trim()), 'i');
   return seq.findIndex((s) => rx.test(s.name));
 }
 
@@ -30,8 +35,8 @@ export async function GET(req) {
 
   await connectDB();
 
-  const fromReg = new RegExp(from, 'i');
-  const toReg   = new RegExp(to,   'i');
+  const fromReg = new RegExp(escapeRegex(from), 'i');
+  const toReg   = new RegExp(escapeRegex(to),   'i');
 
   // Match routes where from/to appear as origin, destination, OR any stop name.
   const routes = await Route.find({

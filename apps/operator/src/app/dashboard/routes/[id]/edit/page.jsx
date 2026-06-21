@@ -58,8 +58,8 @@ export default function EditRoutePage() {
           distance:       rt.distance ? String(rt.distance) : "",
           status:         rt.status || "active",
           stops:          rt.stops || [],
-          boardingPoints: rt.boardingPoints?.length ? rt.boardingPoints : [emptyPoint(1)],
-          droppingPoints: rt.droppingPoints?.length ? rt.droppingPoints : [emptyPoint(1)],
+          boardingPoints: rt.boardingPoints || [],
+          droppingPoints: rt.droppingPoints || [],
         });
       } catch { toast.error("Failed to load route"); }
       finally { setLoading(false); }
@@ -102,9 +102,9 @@ export default function EditRoutePage() {
     if (!form.routeName.trim()) e.routeName = "Route name is required";
     if (!form.origin.trim()) e.origin = "Origin is required";
     if (!form.destination.trim()) e.destination = "Destination is required";
-    if (!form.boardingPoints.length || form.boardingPoints.some((p) => !p.name.trim() || !p.time))
+    if (form.boardingPoints.some((p) => !p.name.trim() || !p.time))
       e.boardingPoints = "All boarding points need a name and time";
-    if (!form.droppingPoints.length || form.droppingPoints.some((p) => !p.name.trim() || !p.time))
+    if (form.droppingPoints.some((p) => !p.name.trim() || !p.time))
       e.droppingPoints = "All dropping points need a name and time";
     setErrors(e);
     return Object.keys(e).length === 0;
