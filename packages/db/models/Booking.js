@@ -36,7 +36,18 @@ const bookingSchema = new mongoose.Schema({
   cancelledAt: { type: Date, default: null },
   operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Operator', default: null },
   tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', default: null },
+  boardingStatus: {
+    type: String,
+    enum: ['not_arrived', 'waiting', 'boarded', 'no_show'],
+    default: 'not_arrived',
+  },
+  boardingStatusUpdatedAt: { type: Date, default: null },
+  specialNotes: { type: String, default: '' },
+  luggageInfo: { type: String, default: '' },
 }, { timestamps: true });
+
+bookingSchema.index({ tripId: 1, status: 1 });
+bookingSchema.index({ operatorId: 1, date: 1 });
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
 export default Booking;

@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "nexabus",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3002
+      "name": "user",
+      "runtimeExecutable": "/Users/tanmaykamble/.local/bin/pnpm",
+      "runtimeArgs": ["--filter", "user", "dev"],
+      "port": 3000
     },
     {
       "name": "operator",

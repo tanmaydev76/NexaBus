@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Search, Calendar, Clock, Bus, Trash2 } from "lucide-react";
+import { Plus, Search, Calendar, Clock, Bus, Trash2, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmModal from "@/components/ConfirmModal";
 
@@ -44,9 +44,14 @@ function TripCard({ trip, onDelete }) {
 
       <div className="flex items-center justify-between">
         <span className="text-base font-bold text-brand">₹{trip.fare?.toLocaleString()}</span>
-        <button onClick={() => onDelete(trip)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-          <Trash2 size={15} />
-        </button>
+        <div className="flex items-center gap-1">
+          <Link href={`/dashboard/passengers?tripId=${trip._id}`} title="View Passengers" className="p-1.5 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors">
+            <Users size={15} />
+          </Link>
+          <button onClick={() => onDelete(trip)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -11,11 +11,27 @@ async function connectDB() {
     throw new Error('Please define MONGODB_URI in .env.local');
   }
 
-  if (cached.conn) return cached.conn;
-  if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false });
+  // readyState 1 = connected. A stale/dropped connection is still a truthy
+  // object, so without this check a dead connection would be cached forever
+  // and every query against it would hang until it buffer-times-out.
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
   }
-  cached.conn = await cached.promise;
+
+  if (!cached.promise) {
+    cached.conn = null;
+    cached.promise = mongoose.connect(MONGODB_URI).catch((err) => {
+      cached.promise = null;
+      throw err;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    cached.promise = null;
+    throw err;
+  }
   return cached.conn;
 }
 

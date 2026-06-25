@@ -13,6 +13,7 @@ const NAV = [
   { label: "Buses",     href: "/dashboard/buses",     icon: Bus },
   { label: "Routes",    href: "/dashboard/routes",    icon: MapPin },
   { label: "Trips",     href: "/dashboard/trips",     icon: CalendarDays },
+  { label: "Passengers", href: "/dashboard/passengers", icon: Users },
   { label: "Bookings",  href: "/dashboard/bookings",  icon: Ticket },
   { label: "Reports",   href: "/dashboard/reports",   icon: BarChart2 },
   { label: "Settings",  href: "/dashboard/settings",  icon: Settings },
@@ -112,9 +113,9 @@ export default function DashboardLayout({ children }) {
   )?.label || "Dashboard";
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden print:h-auto print:overflow-visible">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col flex-shrink-0">
+      <aside className="hidden lg:flex flex-col flex-shrink-0 print:hidden">
         <Sidebar collapsed={collapsed} />
       </aside>
 
@@ -129,9 +130,9 @@ export default function DashboardLayout({ children }) {
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 flex-shrink-0 h-14 flex items-center px-4 gap-3">
+        <header className="bg-white border-b border-slate-200 flex-shrink-0 h-14 flex items-center px-4 gap-3 print:hidden">
           {/* Mobile menu */}
           <button onClick={() => setMobileOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-700">
             <Menu size={22} />
@@ -159,7 +160,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto print:overflow-visible">
           {children}
         </main>
       </div>
