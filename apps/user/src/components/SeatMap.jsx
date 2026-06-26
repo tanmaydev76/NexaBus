@@ -21,14 +21,6 @@ const SteeringWheelIcon = () => (
   </svg>
 );
 
-// ─── X icon for booked seater ─────────────────────────────────────────────────
-const XIcon = ({ color }) => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <line x1="3" y1="3" x2="13" y2="13" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-    <line x1="13" y1="3" x2="3" y2="13" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-  </svg>
-);
-
 // ─── SEATER seat cell ──────────────────────────────────────────────────────────
 function SeaterSeatCell({ seat, selectedSeats, onToggle }) {
   if (!seat) return <div className="w-11 h-12" />;
@@ -38,25 +30,25 @@ function SeaterSeatCell({ seat, selectedSeats, onToggle }) {
   const isFemale   = seat.isFemaleOnly;
 
   // ── colour tokens ──
-  let border, bg, pillowBg, personColor, showPerson, showX;
+  let border, bg, pillowBg, personColor, showPerson;
 
   if (isBooked) {
     if (isFemale) {
       border = "border-pink-200";   bg = "bg-pink-50";
-      pillowBg = "bg-pink-200";     personColor = "#f9a8d4"; showPerson = true; showX = false;
+      pillowBg = "bg-pink-200";     personColor = "#f9a8d4"; showPerson = true;
     } else {
       border = "border-gray-200";   bg = "bg-gray-100";
-      pillowBg = "bg-gray-300";     personColor = null; showPerson = false; showX = true;
+      pillowBg = "bg-gray-300";     personColor = "#9ca3af"; showPerson = true;
     }
   } else if (isSelected) {
     border = "border-green-700";    bg = "bg-green-700";
-    pillowBg = "bg-green-900";      personColor = null; showPerson = false; showX = false;
+    pillowBg = "bg-green-900";      personColor = null; showPerson = false;
   } else if (isFemale) {
     border = "border-pink-500";     bg = "bg-pink-50";
-    pillowBg = "bg-pink-400";       personColor = "#ec4899"; showPerson = true; showX = false;
+    pillowBg = "bg-pink-400";       personColor = "#ec4899"; showPerson = true;
   } else {
     border = "border-green-500";    bg = "bg-white";
-    pillowBg = "bg-green-500";      personColor = null; showPerson = false; showX = false;
+    pillowBg = "bg-green-500";      personColor = null; showPerson = false;
   }
 
   const opacity = isBooked ? "opacity-70" : "opacity-100";
@@ -73,7 +65,6 @@ function SeaterSeatCell({ seat, selectedSeats, onToggle }) {
       <div className={`relative w-11 h-12 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all duration-150 ${border} ${bg} ${opacity} ${!isBooked && !isSelected ? "group-hover:scale-105 group-hover:shadow-md" : ""} ${isSelected ? "shadow-lg scale-105" : ""}`}>
         {/* Content inside seat */}
         {showPerson && <PersonSilhouette color={personColor} size={20} />}
-        {showX && <XIcon color="#9ca3af" />}
         {/* Pillow bar at bottom */}
         <div className={`absolute bottom-1.5 w-7 h-1.5 rounded-full ${pillowBg} ${isBooked && !isFemale ? "opacity-60" : ""}`} />
       </div>
@@ -126,7 +117,7 @@ function SleeperBerth({ seat, selectedSeats, onToggle, price }) {
     } else {
       containerCls = "bg-gray-100 border-gray-200";
       pillowCls    = "bg-gray-300";
-      personColor  = null; showPerson = false;
+      personColor  = "#9ca3af"; showPerson = true;
     }
   } else if (isSelected) {
     containerCls = "bg-green-700 border-green-800";
@@ -165,12 +156,12 @@ function SleeperBerth({ seat, selectedSeats, onToggle, price }) {
 }
 
 // ─── SLEEPER deck grid ────────────────────────────────────────────────────────
-function SleeperDeckGrid({ rows, selectedSeats, onToggle, label, price }) {
+function SleeperDeckGrid({ rows, selectedSeats, onToggle, label, price, showSteeringWheel }) {
   return (
-    <div className="bg-[#F5F5FA] rounded-3xl p-5 inline-block min-w-[200px]">
+    <div className="bg-[#F5F5FA] rounded-3xl p-5 inline-block min-w-[200px] flex-shrink-0">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-sm font-bold text-gray-700">{label}</h3>
-        <SteeringWheelIcon />
+        {showSteeringWheel && <SteeringWheelIcon />}
       </div>
       <div className="flex flex-col gap-3">
         {rows.map((row, rowIdx) => (
@@ -201,7 +192,6 @@ function LegendItem({ label, seaterEl, sleeperEl }) {
 // ─── Main SeatMap Component ────────────────────────────────────────────────────
 export default function SeatMap({ layout, busPrice = 800 }) {
   const { selectedSeats, toggleSeat } = useBookingStore();
-  const [activeTab, setActiveTab] = useState("lower");
   const [showLegend, setShowLegend] = useState(false);
 
   const isSleeperLayout = layout?.type === "sleeper";
@@ -209,23 +199,6 @@ export default function SeatMap({ layout, busPrice = 800 }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-      {/* Deck switcher (sleeper only) */}
-      {isSleeperLayout && (
-        <div className="flex gap-2 mb-5">
-          {["lower", "upper"].map((deck) => (
-            <button
-              key={deck}
-              onClick={() => setActiveTab(deck)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                activeTab === deck ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {deck === "lower" ? "Lower Deck" : "Upper Deck"}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Collapsible legend */}
       <div className="mb-5">
         <button
@@ -270,8 +243,8 @@ export default function SeatMap({ layout, busPrice = 800 }) {
               },
               {
                 label: "Already booked",
-                seater: <div className="w-10 h-11 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center"><XIcon color="#9ca3af" /></div>,
-                sleeper: <div className="w-12 h-[72px] rounded-2xl border-2 border-gray-200 bg-gray-100" />,
+                seater: <div className="w-10 h-11 rounded-xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center"><PersonSilhouette color="#9ca3af" size={16} /></div>,
+                sleeper: <div className="w-12 h-[72px] rounded-2xl border-2 border-gray-200 bg-gray-100 flex items-center justify-center"><PersonSilhouette color="#9ca3af" size={20} /></div>,
               },
               {
                 label: "Booked — female passenger",
@@ -294,11 +267,10 @@ export default function SeatMap({ layout, busPrice = 800 }) {
       {/* Seat grid */}
       <div className="overflow-x-auto">
         {isSleeperLayout ? (
-          activeTab === "lower" ? (
-            <SleeperDeckGrid rows={layout.lower} selectedSeats={selectedSeats} onToggle={toggleSeat} label="Lower deck" price={busPrice} />
-          ) : (
+          <div className="flex gap-5 items-start">
+            <SleeperDeckGrid rows={layout.lower} selectedSeats={selectedSeats} onToggle={toggleSeat} label="Lower deck" price={busPrice} showSteeringWheel />
             <SleeperDeckGrid rows={layout.upper} selectedSeats={selectedSeats} onToggle={toggleSeat} label="Upper deck" price={busPrice} />
-          )
+          </div>
         ) : (
           <>
             <div className="flex justify-end mb-3">

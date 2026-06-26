@@ -1,8 +1,68 @@
 "use client";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, ChevronRight } from "lucide-react";
+import { MapPin, ChevronRight, ChevronDown, Check } from "lucide-react";
 import useBookingStore from "@/store/bookingStore";
 import toast from "react-hot-toast";
+
+// ─── Custom stop dropdown (replaces native <select> for a themed look) ────────
+function StopDropdown({ value, onChange, options, pinColor }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selected = options.find((s) => s.name === value);
+  const pinClass = pinColor === "red" ? "text-red-500" : "text-blue-500";
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center gap-2 pl-3 pr-3 py-2 border rounded-lg text-sm bg-gray-50 transition-colors ${
+          open ? "border-blue-500 ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300"
+        }`}
+      >
+        <MapPin size={14} className={`flex-shrink-0 ${pinClass}`} />
+        <span className={`flex-1 text-left truncate ${selected ? "text-gray-700" : "text-gray-400"}`}>
+          {selected ? `${selected.name}${selected.time ? ` (${selected.time})` : ""}` : "Select stop"}
+        </span>
+        <ChevronDown size={14} className={`flex-shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1.5 w-full bg-white rounded-xl border border-gray-100 shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] overflow-hidden">
+          <ul className="max-h-52 overflow-y-auto py-1">
+            {options.map((s) => (
+              <li key={s.name}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(s.name); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-2 text-left px-3.5 py-2.5 text-sm transition-colors ${
+                    value === s.name ? "bg-blue-50 text-blue-600 font-semibold" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="truncate">{s.name}{s.time ? ` (${s.time})` : ""}</span>
+                  {value === s.name && <Check size={14} className="flex-shrink-0" />}
+                </button>
+              </li>
+            ))}
+            {options.length === 0 && (
+              <li className="px-3.5 py-4 text-center text-sm text-gray-400">No stops available</li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BookingSummary() {
   const router = useRouter();
@@ -79,41 +139,23 @@ export default function BookingSummary() {
       {/* Boarding point */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1">BOARDING POINT</label>
-        <div className="relative">
-          <MapPin size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" />
-          <select
-            value={boardingPoint}
-            onChange={(e) => setBoardingPoint(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select stop</option>
-            {(selectedBus.boardingPoints?.length ? selectedBus.boardingPoints : selectedBus.stops).map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name}{s.time ? ` (${s.time})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        <StopDropdown
+          value={boardingPoint}
+          onChange={setBoardingPoint}
+          options={selectedBus.boardingPoints?.length ? selectedBus.boardingPoints : selectedBus.stops}
+          pinColor="blue"
+        />
       </div>
 
       {/* Dropping point */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1">DROPPING POINT</label>
-        <div className="relative">
-          <MapPin size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-red-500" />
-          <select
-            value={droppingPoint}
-            onChange={(e) => setDroppingPoint(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select stop</option>
-            {(selectedBus.droppingPoints?.length ? selectedBus.droppingPoints : selectedBus.stops).map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name}{s.time ? ` (${s.time})` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        <StopDropdown
+          value={droppingPoint}
+          onChange={setDroppingPoint}
+          options={selectedBus.droppingPoints?.length ? selectedBus.droppingPoints : selectedBus.stops}
+          pinColor="red"
+        />
       </div>
 
       {/* Fare breakdown */}
