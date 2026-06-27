@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
-import { ArrowRight, SlidersHorizontal, X } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, SlidersHorizontal, X } from "lucide-react";
 import BusCard from "@/components/BusCard";
 import ProgressStepper from "@/components/ProgressStepper";
 import FilterSidebar from "@/components/filters/FilterSidebar";
 import ActiveFilterTags from "@/components/filters/ActiveFilterTags";
+import CompactSearchBar from "@/components/CompactSearchBar";
 import useBookingStore from "@/store/bookingStore";
 import { Suspense } from "react";
 
@@ -123,6 +124,7 @@ function applyFilters(buses, filters) {
 }
 
 function BusListingContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const from = params.get("from") || "";
   const to   = params.get("to")   || "";
@@ -189,16 +191,25 @@ function BusListingContent() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Search summary */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <div className="flex items-center gap-2 text-xl font-bold text-gray-900">
-              <span>{from}</span>
-              <ArrowRight size={20} className="text-blue-500" />
-              <span>{to}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-gray-500 hover:bg-gray-100 transition-colors flex-shrink-0"
+              title="Back"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                <span>{from}</span>
+                <ArrowRight size={20} className="text-blue-500" />
+                <span>{to}</span>
+              </div>
+              <p className="text-sm text-gray-400 mt-0.5">
+                {date} · <span className="font-medium text-gray-600">{filtered.length} buses found</span>
+              </p>
             </div>
-            <p className="text-sm text-gray-400 mt-0.5">
-              {date} · <span className="font-medium text-gray-600">{filtered.length} buses found</span>
-            </p>
           </div>
 
           {/* Mobile filter button */}
@@ -214,6 +225,11 @@ function BusListingContent() {
               </span>
             )}
           </button>
+        </div>
+
+        {/* Modify search */}
+        <div className="mb-6">
+          <CompactSearchBar initialFrom={from} initialTo={to} initialDate={date} />
         </div>
 
         <div className="flex gap-6">
