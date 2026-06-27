@@ -9,9 +9,12 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') || '';
   const range = searchParams.get('range') || '';
+  const date = searchParams.get('date') || '';
   const query = { operatorId: operator._id };
   if (status) query.status = status;
-  if (range === 'today') {
+  if (date) {
+    query.departureDate = date;
+  } else if (range === 'today') {
     const today = new Date().toISOString().split('T')[0];
     query.departureDate = today;
   } else if (range === 'week') {

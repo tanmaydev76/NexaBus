@@ -191,19 +191,24 @@ function TripSelector() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [rangeFilter, setRangeFilter] = useState("today");
+  const [customDate, setCustomDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (rangeFilter) params.set("range", rangeFilter);
+    if (rangeFilter === "custom") {
+      if (customDate) params.set("date", customDate);
+    } else if (rangeFilter) {
+      params.set("range", rangeFilter);
+    }
     if (statusFilter) params.set("status", statusFilter);
     fetch(`/api/operator/trips?${params}`)
       .then((r) => r.json())
       .then((d) => setTrips(d.trips || []))
       .catch(() => toast.error("Failed to load trips"))
       .finally(() => setLoading(false));
-  }, [rangeFilter, statusFilter]);
+  }, [rangeFilter, customDate, statusFilter]);
 
   const filtered = useMemo(() => trips.filter((t) => {
     const q = search.toLowerCase();
@@ -239,8 +244,17 @@ function TripSelector() {
           <option value="today">Today</option>
           <option value="week">This Week</option>
           <option value="month">This Month</option>
+          <option value="custom">Custom Date</option>
           <option value="">All Dates</option>
         </select>
+        {rangeFilter === "custom" && (
+          <input
+            type="date"
+            value={customDate}
+            onChange={(e) => setCustomDate(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white"
+          />
+        )}
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand/20 bg-white">
           <option value="">All Status</option>
